@@ -39,6 +39,13 @@ class TestScanStart:
         }, headers=analyst_headers)
         assert resp.status_code == 400
 
+    def test_start_scan_admin_forbidden(self, client, auth_headers):
+        resp = client.post("/scan/start", json={
+            "ip_address": "10.0.0.1",
+            "ack_disclaimer": True
+        }, headers=auth_headers)
+        assert resp.status_code == 403
+
 
 class TestScanHistory:
     def test_scan_history_requires_auth(self, client):

@@ -26,6 +26,10 @@ def start_scan(
     db: Session = Depends(get_db),
     current_payload: dict = Depends(get_current_user)
 ):
+    role = current_payload.get("role")
+    if role != "Analyst":
+        raise HTTPException(status_code=403, detail="Only users can start scans")
+
     if not body.ack_disclaimer:
         raise HTTPException(status_code=400, detail="Must acknowledge ethical disclaimer before scanning")
 
