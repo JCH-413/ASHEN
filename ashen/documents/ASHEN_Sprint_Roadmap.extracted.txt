@@ -1,0 +1,720 @@
+﻿
+
+
+ASHEN
+Automated Security & Host Exploitation Navigator
+
+6-DAY SPRINT ROADMAP
+Solo Developer Â· Maximum Intensity Â· Full Stack Delivery
+
+Sumit Jethani Â· Maheen Naeem Â· Junaid Aamir Chaudhary
+Supervised by Dr. Ammar Rafiq & Mr. Talha Arif
+FAST â€“ NUCES, Chiniot Faisalabad Campus  |  March 2025
+1. Situation & Constraints
+
+
+âš 
+6 days remaining. Solo developer. Full-stack delivery required. Every hour counts â€” this plan is designed around that reality.
+
+The following constraints shape every decision in this roadmap:
+6 calendar days of maximum-effort work (14â€“16 hrs/day)
+Solo developer â€” no parallel workstreams
+Metasploitable2 VM not yet set up â€” must be done Day 1
+Ollama not yet installed â€” must be done Day 1
+Existing codebase has critical security bugs that block all other work
+OpenVAS dropped from scope â€” Nmap NSE scripts cover vulnerability detection sufficiently for demo
+PostgreSQL + JSONB replaces SQLite â€” one database handles both relational and document data
+
+Key decision: PostgreSQL with JSONB columns replaces the original SQLite â†’ PostgreSQL plan AND eliminates the need for MongoDB. Scan results, AI outputs, and report metadata are stored as JSONB documents inside PostgreSQL. One database, full power, zero added complexity.
+
+2. 6-Day Sprint Overview
+
+
+Day
+Focus
+Hours
+Day 1
+Fixes + DB Migration + Environment
+14â€“16 hrs
+Day 2
+Scanning + Exploit Validation
+14â€“16 hrs
+Day 3
+AI Module (Ollama + LLaMA)
+14â€“16 hrs
+Day 4
+React Frontend â€” Core Pages
+14â€“16 hrs
+Day 5
+React Frontend â€” AI + Reports + PDF
+14â€“16 hrs
+Day 6
+Integration, Demo & Polish
+14â€“16 hrs
+
+Each day is a focused sprint with a single primary objective. Days are ordered by strict dependency â€” nothing in Day 2 can begin until Day 1 is complete. Do not skip ahead.
+
+3. Final Technology Stack
+
+
+Layer
+Technology
+Purpose
+Backend
+FastAPI (Python)
+REST API + async handling
+Database
+PostgreSQL + JSONB
+Relational data + document storage in one DB
+ORM
+SQLAlchemy + asyncpg
+Models, queries, JSONB column support
+Auth
+PyJWT + bcrypt (passlib)
+Stateless JWT, password hashing
+Network Scan
+Nmap (subprocess + XML)
+Host discovery, port scan, NSE vuln scripts
+Exploit Validation
+Hydra + Metasploit (msfrpc)
+SSH/FTP brute-force, MS17-010, Shellshock
+AI Engine
+Ollama + LLaMA 3.1 8B (local)
+Attack recommendations, remediation guidance
+Frontend
+React + Vite + Tailwind CSS
+Web dashboard
+Charts
+Recharts
+Severity charts, scan timelines
+Reporting
+WeasyPrint + Jinja2
+PDF + HTML report generation
+Target VM
+Metasploitable2
+Demo and integration testing
+
+Why PostgreSQL + JSONB over hybrid MongoDB: ASHEN's data has strong relational structure (User â†’ Session â†’ Scan â†’ Vulnerability â†’ Exploit â†’ AI â†’ Report). JSONB columns on the Scan and AIRecommendation models give document flexibility where needed without adding a second database, connection pool, or operational burden.
+
+DAY 1
+Fixes Â· DB Migration Â· Environment Setup
+~14â€“16 hrs
+
+Day 1 is entirely foundational. Nothing else in this plan works until these tasks are complete. The existing security bugs must be patched, the database must be migrated to PostgreSQL with JSONB, and the demo environment (Metasploitable2 + Ollama) must be running before you sleep tonight.
+
+Morning Block (4â€“5 hrs): Critical Bug Fixes
+Task
+What to do
+Est. Time
+Priority
+Protect /auth/create-user
+Add require_admin JWT dependency â€” currently completely open
+20 min
+Critical
+Fix logout endpoints
+Verify JWT token in logout routes â€” do not accept bare email strings
+20 min
+Critical
+Protect scan_requests.py
+Add get_current_user dependency to /scan/request-scan
+15 min
+Critical
+Protect scans.py
+Add JWT auth to /scan/start, /scan/status, /scan/history
+20 min
+Critical
+Protect vulns.py
+Add JWT auth to all /vulns/* routes
+15 min
+Critical
+Fix XML collision
+Replace hardcoded scan_output.xml with scan_{scan_id}.xml
+10 min
+Critical
+Fix fire-and-forget scan
+Replace await run_scan_background() with BackgroundTasks
+20 min
+Critical
+Replace query params with schemas
+All POST routes use Pydantic request body â€” use existing user_schema.py as pattern, create scan_schema.py
+45 min
+High
+Fix main.py duplicate imports
+Remove second import of auth, users, admin
+5 min
+Medium
+Delete nmap_scaner.py
+Remove the typo duplicate file
+2 min
+Medium
+Enforce JWT_SECRET
+Add startup check â€” refuse to run if JWT_SECRET is default value
+15 min
+High
+
+Midday Block (4â€“5 hrs): PostgreSQL + JSONB Migration
+Task
+What to do
+Est. Time
+Priority
+Install PostgreSQL
+sudo apt install postgresql, create ashen_db database and ashen_user
+20 min
+Critical
+Update requirements.txt
+Add psycopg2-binary, alembic. Remove sqlite-specific deps.
+10 min
+Critical
+Update config.py
+DATABASE_URL points to PostgreSQL. Add .env validation.
+10 min
+Critical
+Update db.py
+Remove check_same_thread arg (SQLite-only). Verify engine config.
+10 min
+Critical
+Add JSONB to Scan model
+Change results_json from Text to JSONB (from sqlalchemy.dialects.postgresql import JSONB)
+15 min
+Critical
+Set up Alembic
+alembic init, configure env.py, generate and run initial migration
+45 min
+Critical
+Create new models
+Exploit model, AIRecommendation model (with JSONB prompt_data column), Report model
+60 min
+Critical
+Create schemas
+exploit_schema.py, ai_schema.py, report_schema.py, target_schema.py
+45 min
+High
+Run migration + seed
+alembic upgrade head, verify seed_admin() works on PostgreSQL
+20 min
+Critical
+Test existing endpoints
+Hit /auth/admin-login, /admin/targets, /scan/request-scan via Swagger â€” verify all working on new DB
+30 min
+Critical
+
+Evening Block (3â€“4 hrs): Environment Setup
+Task
+What to do
+Est. Time
+Priority
+Install Metasploitable2 VM
+Download OVA, import into VirtualBox/VMware, set network to Host-Only, note IP address
+45 min
+Critical
+Verify Nmap against Metasploitable2
+nmap -sV --script vuln <metasploitable-ip> â€” confirm vulns are detected
+30 min
+Critical
+Install Ollama
+curl -fsSL https://ollama.ai/install.sh | sh
+10 min
+Critical
+Pull LLaMA 3.1 8B model
+ollama pull llama3.1 â€” this takes time, start it and let it run
+60+ min
+Critical
+Test Ollama API
+curl http://localhost:11434/api/generate with a test prompt â€” verify JSON response
+10 min
+Critical
+Install Hydra + Metasploit
+apt install hydra, msfconsole â€” verify both launch correctly
+20 min
+Critical
+Create .env file
+Document all env vars: DATABASE_URL, JWT_SECRET, OLLAMA_URL, METASPLOITABLE_IP
+15 min
+High
+
+End of Day 1 checkpoint: PostgreSQL running with all tables. All existing endpoints protected with JWT. Metasploitable2 reachable. Ollama responding. Hydra and Metasploit installed. If any of these are not done, push evening tasks to first thing Day 2 before moving on.
+
+DAY 2
+Scanning + Exploit Validation
+~14â€“16 hrs
+
+Day 2 completes the backend security modules. By end of day, a full scan â†’ detect vulnerabilities â†’ validate exploits workflow must work end-to-end against Metasploitable2.
+
+Morning Block (4â€“5 hrs): Scanning Hardening + Vulnerability Pipeline
+Task
+What to do
+Est. Time
+Priority
+Improve severity inference
+Extract CVSS score from NSE script output where available. Fall back to keyword regex only if no score found.
+45 min
+High
+Fix scan XML file path
+Store scan XML in /tmp/ashen_scans/scan_{scan_id}.xml â€” create dir on startup
+20 min
+Critical
+Add scan type parameter
+Allow user to choose: quick (default), full (-A), or stealth (-sS). Pass to NmapScanner.
+30 min
+Medium
+Vulnerability API improvements
+Add /vulns/by-scan/{scan_id}/summary endpoint returning counts by severity. Add filter by severity to /vulns/all.
+45 min
+High
+Test full scan pipeline
+Trigger scan on Metasploitable2 via API, verify vulnerabilities appear in DB with correct severity
+45 min
+Critical
+
+Midday Block (4â€“5 hrs): Exploit Validation Module
+Task
+What to do
+Est. Time
+Priority
+Exploit model + migration
+exploit_id, scan_id, vuln_id, tool_used, target_ip, status, result_summary, raw_output (JSONB), timestamp. Run alembic revision.
+45 min
+Critical
+Hydra SSH brute-force wrapper
+services/exploits/hydra_ssh.py â€” subprocess Hydra with small wordlist, parse output, return structured result
+60 min
+High
+Hydra FTP brute-force wrapper
+services/exploits/hydra_ftp.py â€” same pattern targeting vsftpd on Metasploitable2
+30 min
+High
+Metasploit MS17-010 check
+services/exploits/msf_ms17010.py â€” use auxiliary/scanner/smb/smb_ms17_010 via msfrpc or subprocess. Non-destructive check only.
+75 min
+High
+Shellshock CGI check
+services/exploits/shellshock.py â€” HTTP request with malicious User-Agent to CGI endpoints, check for command execution response
+45 min
+Medium
+Exploit router
+api/exploits.py â€” POST /exploit/run (accepts scan_id, exploit_type, ack_disclaimer), GET /exploit/results/{scan_id}
+45 min
+Critical
+Register exploit router in main.py
+Add include_router for exploits with /exploit prefix
+5 min
+Critical
+Test exploits on Metasploitable2
+Run SSH brute-force, FTP brute-force, Shellshock against Metasploitable2. Verify results stored in DB.
+60 min
+Critical
+
+Evening Block (3 hrs): API Cleanup + Error Handling
+Task
+What to do
+Est. Time
+Priority
+Global exception handler
+Add @app.exception_handler in main.py for 422, 500 â€” return consistent JSON error format
+30 min
+High
+Add /api/v1 prefix
+Wrap all routers with /api/v1 prefix in main.py
+20 min
+Medium
+CORS configuration
+Add CORSMiddleware to main.py â€” allow localhost:5173 (Vite dev server)
+15 min
+Critical
+Full API smoke test
+Run through entire flow via Swagger: login â†’ request scan â†’ approve â†’ scan â†’ vulns â†’ exploit â†’ verify all returning correct data
+60 min
+Critical
+
+End of Day 2 checkpoint: Full scan â†’ vulnerability â†’ exploit pipeline working on Metasploitable2. All API routes protected. CORS configured. Swagger docs complete and accurate.
+
+DAY 3
+AI Module â€” Ollama + LLaMA Integration
+~14â€“16 hrs
+
+Day 3 builds the entire AI layer. By end of day, the system must generate attack recommendations and remediation guidance from real scan and exploit data using the local LLaMA model.
+
+Morning Block (4 hrs): Ollama Client + Prompt Engine
+Task
+What to do
+Est. Time
+Priority
+OllamaClient class
+services/ai/ollama_client.py â€” POST to http://localhost:11434/api/generate, handle streaming=False, timeout, and connection errors
+45 min
+Critical
+Prompt templates
+services/ai/prompts.py â€” structured templates for attack_recommendation and remediation_guidance contexts. Include scan summary, vuln list, exploit outcomes.
+60 min
+Critical
+Context builder
+services/ai/context_builder.py â€” queries DB for scan + vuln + exploit data and formats into prompt context dict
+45 min
+Critical
+Safety filter
+services/ai/safety_filter.py â€” post-process AI output, block keywords: rm -rf, DROP TABLE, format c:, destroy, wipe. Return sanitized text.
+30 min
+Critical
+Offline fallback
+If Ollama connection fails, return pre-written template guidance per vuln type. Never fail silently.
+30 min
+High
+Test Ollama client
+Unit test OllamaClient with a real prompt. Verify response parses correctly. Check timeout handling.
+30 min
+Critical
+
+Midday Block (5 hrs): Attack Recommender + Remediation
+Task
+What to do
+Est. Time
+Priority
+AIRecommendation model
+rec_id, scan_id, model_version, prompt_data (JSONB), output_text, status (pending/accepted/rejected/regenerated), created_by, timestamp. Alembic migration.
+45 min
+Critical
+AIRemediation model
+rem_id, exploit_id, vuln_id, model_version, prompt_data (JSONB), guidance_text, status, timestamp. Alembic migration.
+30 min
+Critical
+POST /ai/recommend-attacks
+Accepts scan_id, builds context, calls Ollama, stores result in AIRecommendation with status=pending, returns to user
+60 min
+Critical
+POST /ai/recommendation/{id}/review
+Analyst posts action: accepted/rejected/regenerated. Updates status. If regenerated, calls Ollama again.
+45 min
+Critical
+POST /ai/remediate
+Accepts exploit_id or vuln_id, builds remediation context, calls Ollama, stores in AIRemediation, returns guidance
+60 min
+Critical
+POST /ai/chat
+Simple follow-up Q&A â€” accepts vuln_id/exploit_id + user question, builds mini context, returns AI answer. Does not save to DB.
+45 min
+Medium
+AI governance logging
+Every AI call logs to audit_log: model_version, prompt hash (sha256), user email, timestamp
+30 min
+Critical
+Register AI router
+Add api/ai.py router to main.py with /ai prefix
+10 min
+Critical
+
+Evening Block (3 hrs): AI Testing
+Task
+What to do
+Est. Time
+Priority
+End-to-end AI test
+Run full pipeline: scan Metasploitable2 â†’ exploit SSH â†’ POST /ai/recommend-attacks â†’ review â†’ POST /ai/remediate. Verify outputs make sense.
+60 min
+Critical
+Test offline fallback
+Stop Ollama, hit AI endpoints, verify fallback templates are returned instead of errors
+20 min
+High
+Test safety filter
+Manually inject dangerous keywords into a mock AI response, verify filter catches them
+20 min
+Critical
+Tune prompts
+Review actual LLaMA output quality. Adjust prompt templates if responses are too generic or too long.
+60 min
+High
+
+End of Day 3 checkpoint: AI recommendations and remediation guidance generating from real Metasploitable2 scan data. Accept/Reject/Regenerate flow working. Governance logging verified in audit_log.
+
+DAY 4
+React Frontend â€” Core Pages
+~14â€“16 hrs
+
+Day 4 builds the React frontend foundation and all core pages. Prioritize function over beauty â€” a working dashboard that shows real data is the goal. Polish comes on Day 6.
+
+Morning Block (3â€“4 hrs): Project Setup + Auth
+Task
+What to do
+Est. Time
+Priority
+Scaffold React project
+npm create vite@latest ashen-frontend -- --template react. Install: tailwindcss, react-router-dom, axios, recharts, lucide-react
+30 min
+Critical
+Tailwind configuration
+npx tailwindcss init -p, configure content paths, add base styles
+20 min
+Critical
+Axios API service
+src/services/api.js â€” Axios instance with baseURL=/api/v1, request interceptor adds Bearer token from localStorage, response interceptor handles 401
+45 min
+Critical
+Auth context
+src/context/AuthContext.jsx â€” stores token + role in state, login/logout functions, persists to localStorage
+45 min
+Critical
+Protected route component
+src/components/ProtectedRoute.jsx â€” redirects to /login if no token. Separate guard for Admin-only routes.
+30 min
+Critical
+Login page
+src/pages/Login.jsx â€” toggle Admin/Analyst, email+password form, calls /auth/admin-login or /auth/user-login, stores token, redirects to dashboard
+60 min
+Critical
+App routing
+src/App.jsx â€” react-router routes for all pages with ProtectedRoute wrappers
+30 min
+Critical
+Sidebar + Layout
+src/components/Layout.jsx â€” sidebar nav with links, top bar showing current user + role + logout button
+60 min
+Critical
+
+Midday Block (5 hrs): Dashboard + Scan + Vulnerability Pages
+Task
+What to do
+Est. Time
+Priority
+Dashboard home page
+src/pages/Dashboard.jsx â€” 4 summary cards (total scans, critical vulns, open exploits, AI recommendations), recent audit log feed
+90 min
+Critical
+Severity donut chart
+Recharts PieChart showing critical/high/medium/low vuln counts on dashboard
+45 min
+High
+Scan management page
+src/pages/Scans.jsx â€” Start Scan form (IP input, scan type dropdown, ethical disclaimer checkbox), scan history table with status badges, auto-refresh every 5s
+90 min
+Critical
+Vulnerability viewer
+src/pages/Vulnerabilities.jsx â€” table with columns: port, script_id, severity (color-coded badge), description. Filter by severity. Click row to expand raw output.
+90 min
+Critical
+
+Evening Block (4 hrs): Exploit + Admin Pages
+Task
+What to do
+Est. Time
+Priority
+Exploit results page
+src/pages/Exploits.jsx â€” table of exploit runs, tool used, target, status badge, result summary. Button to trigger AI remediation for each row.
+90 min
+Critical
+Admin â€” User management
+src/pages/admin/Users.jsx â€” table of users, create user form (admin only), shows created_by and created_at
+60 min
+Critical
+Admin â€” Authorized targets
+src/pages/admin/Targets.jsx â€” list targets, add target form, shows authorized status
+45 min
+Critical
+Admin â€” Scan request queue
+src/pages/admin/ScanRequests.jsx â€” pending requests table, Approve/Deny buttons per row
+60 min
+Critical
+Admin â€” Audit log viewer
+src/pages/admin/AuditLog.jsx â€” paginated table with filter by user and action keyword
+60 min
+High
+
+End of Day 4 checkpoint: Login works. Dashboard shows real data. Scans can be triggered and monitored. Vulnerability table populated. Exploit results visible. Admin panel functional.
+
+DAY 5
+Frontend â€” AI Pages + Reports + PDF Generation
+~14â€“16 hrs
+
+Day 5 completes the frontend with AI interaction pages and builds the entire report generation system. By end of day the system must generate a downloadable PDF report from a real scan.
+
+Morning Block (4 hrs): AI Frontend Pages
+Task
+What to do
+Est. Time
+Priority
+Attack recommendations page
+src/pages/AIRecommendations.jsx â€” select scan, click Generate, display returned attack suggestions as cards with Accept/Reject/Regenerate buttons per card
+90 min
+Critical
+Remediation guidance page
+src/pages/Remediation.jsx â€” list exploits, click Get Remediation, display AI-generated guidance with copy button. Show status badge (pending/accepted).
+90 min
+Critical
+AI Chat panel
+Collapsible chat sidebar component â€” input box, send button, displays conversation. Calls /ai/chat with current vuln/exploit context.
+60 min
+Medium
+AI loading states
+Skeleton loaders and spinner while waiting for Ollama response. Disable buttons during generation.
+30 min
+High
+
+Midday Block (5 hrs): Report Generation Backend
+Task
+What to do
+Est. Time
+Priority
+Install WeasyPrint + Jinja2
+pip install weasyprint jinja2. Verify WeasyPrint renders test HTML to PDF.
+20 min
+Critical
+Report model + migration
+report_id, scan_id, generated_by, format (pdf/html/csv), file_path, metadata (JSONB), created_at. Alembic revision.
+30 min
+Critical
+Jinja2 HTML report template
+templates/report.html â€” sections: executive summary, network info, vulnerability table, exploit outcomes, AI recommendations, risk score. Style with inline CSS.
+90 min
+Critical
+Report data aggregator
+services/reporting/report_builder.py â€” queries all scan, vuln, exploit, AI data for a scan_id and returns structured dict for Jinja2
+45 min
+Critical
+PDF generation service
+services/reporting/pdf_generator.py â€” renders Jinja2 template to HTML string, passes to WeasyPrint, saves to /reports/scan_{scan_id}_{timestamp}.pdf
+45 min
+Critical
+CSV export service
+services/reporting/csv_exporter.py â€” writes vulnerability table to CSV using Python csv module
+30 min
+Medium
+Report API routes
+api/reports.py â€” POST /reports/generate (scan_id, format), GET /reports/{report_id}/download (streams file), GET /reports (list all). Register in main.py.
+60 min
+Critical
+Test report generation
+Generate PDF from real Metasploitable2 scan. Open it. Verify all sections populated with real data.
+30 min
+Critical
+
+Evening Block (3â€“4 hrs): Report Frontend Page
+Task
+What to do
+Est. Time
+Priority
+Report generation page
+src/pages/Reports.jsx â€” select scan from dropdown, select format (PDF/HTML/CSV), Generate button, download link appears on completion
+90 min
+Critical
+Saved reports list
+Table of previously generated reports with download links, scan reference, generated_by, timestamp
+45 min
+High
+File download handler
+Axios call to /reports/{id}/download with responseType: blob, trigger browser download via URL.createObjectURL
+30 min
+Critical
+End-to-end report test
+Full flow from UI: select scan â†’ generate PDF â†’ download â†’ open file. Verify it looks professional.
+30 min
+Critical
+
+End of Day 5 checkpoint: AI recommendation and remediation pages working. PDF report generates from real scan data and downloads correctly. All 13 SRS use cases now have corresponding UI and API coverage.
+
+DAY 6
+Integration Â· Demo Prep Â· Polish
+~14â€“16 hrs
+
+Day 6 is about making everything reliable, rehearsed, and impressive. No new features. Fix what is broken, polish what works, and run the full demo workflow multiple times until it is smooth.
+
+Morning Block (4 hrs): Integration Testing
+Task
+What to do
+Est. Time
+Priority
+Full workflow run #1
+Admin login â†’ create analyst â†’ add Metasploitable2 as target â†’ analyst login â†’ request scan â†’ admin approves â†’ scan runs â†’ vulns detected â†’ exploit SSH â†’ AI recommendation â†’ AI remediation â†’ generate PDF. Note every failure.
+90 min
+Critical
+Fix all blockers from run #1
+Triage failures by severity. Fix anything that breaks the demo flow first.
+90 min
+Critical
+Full workflow run #2
+Repeat the full flow. Should be mostly clean. Fix remaining issues.
+60 min
+Critical
+
+Midday Block (4 hrs): Polish + Non-Functional Requirements
+Task
+What to do
+Est. Time
+Priority
+Ethical disclaimer modal
+Full-screen modal before any scan or exploit â€” must click Accept. Logs acknowledgment to audit_log. Cannot be dismissed without accepting.
+45 min
+Critical
+Loading states across all pages
+Every API call shows a spinner or skeleton. No blank screens while waiting.
+60 min
+High
+Error messages in UI
+API errors surfaced as toast notifications or inline alerts â€” no silent failures anywhere
+45 min
+High
+Dashboard data refresh
+Dashboard cards auto-refresh every 30s. Scan status polls every 5s until completed.
+30 min
+Medium
+DB backup script
+scripts/backup_db.sh â€” pg_dump ashen_db to /backups/ with timestamp. Make executable.
+20 min
+Medium
+requirements.txt final cleanup
+Pin all versions. Remove any unused packages.
+20 min
+Medium
+
+Evening Block (4 hrs): Demo Preparation + Documentation
+Task
+What to do
+Est. Time
+Priority
+Write demo script
+Step-by-step narrative for the supervisor demo. Cover every SRS use case. Assign talking points to each step.
+60 min
+Critical
+Full demo rehearsal
+Run the complete demo script as if presenting to supervisor. Time it. Should be 15â€“20 minutes.
+45 min
+Critical
+README.md
+Setup guide: prerequisites (Linux, PostgreSQL, Nmap, Hydra, Metasploit, Ollama), .env setup, DB migration, running backend and frontend, Metasploitable2 network config.
+60 min
+High
+Final demo run
+One last clean run of the full workflow. Everything should work first try.
+45 min
+Critical
+Backup everything
+Git commit all code, push to remote. Export DB dump. Copy reports folder.
+15 min
+Critical
+
+End of Day 6: ASHEN is demo-ready. Full SRS use case coverage. Real data from Metasploitable2. PDF report generated. Supervisor demo rehearsed and timed.
+
+4. Development Rules
+
+
+4.1 Non-Negotiables
+Every POST/PUT route uses a Pydantic request body schema â€” no raw query params
+Every route except /auth/admin-login and /auth/user-login requires JWT auth
+Every state-changing action calls create_audit_log() â€” no exceptions
+Every exploit route checks target authorization before execution
+Every AI call logs model_version + prompt hash + user to audit_log
+Ethical disclaimer must be acknowledged and logged before any scan or exploit
+
+4.2 Speed Rules for the Sprint
+Do not refactor working code â€” fix bugs, add features, move on
+Do not spend more than 30 minutes stuck on any single task â€” skip and return later
+Test against Metasploitable2 as early as possible â€” do not test in isolation
+Commit to git at the end of every block â€” if something breaks you can roll back
+Keep Swagger docs open in a browser tab â€” use it to test every new endpoint immediately
+
+4.3 What to Cut If Running Behind
+If you fall behind schedule, cut in this order â€” these are lowest impact on the demo:
+AI Chat panel (Day 5) â€” interesting but not in the core SRS flow
+CSV export (Day 5) â€” PDF and HTML are sufficient
+Shellshock exploit (Day 2) â€” SSH + FTP brute-force + MS17-010 are enough
+Scan timeline chart (Day 4) â€” severity donut is more impactful
+Session viewer admin page â€” audit log is more important
+

@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(file /d/FAST-NUCES/FYP-2/ashen/ashen/documents/*)",
+      "Bash(python3:*)"
+    ]
+  }
+}

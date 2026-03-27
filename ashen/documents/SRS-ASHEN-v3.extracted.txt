@@ -1,0 +1,1553 @@
+﻿ASHEN
+FYP TEAM
+Sumit Jethani 22F-3852
+Maheen Naeem 22F
+-
+3145
+Junaid Aamir 
+Chaudhary 
+22F-3332
+Supervised By
+Dr. Ammar Rafiq
+Mr. Talha Arif
+Department of Computer Science
+FAST â€“ National University of Computer & Emerging Sciences
+Chiniot Faisalabad Campus
+2025
+Table of Contents
+List of Tables
+iv
+List of Figures
+vi
+1.
+Introduction
+1
+2.
+Definitions, Acronyms, and Abbreviations
+1
+3.
+Vision Document
+2
+3.1
+Problem Statement
+2
+3.2
+Business Opportunities
+2
+3.3
+Objectives
+2
+3.4
+Scope
+3
+3.5
+Constraints
+3
+3.6
+Stakeholder and User Description
+3
+3.6.1
+Market Demographics
+3
+3.6.2
+User Environment
+4
+3.6.3
+Stakeholder Profiles
+4
+3.6.4
+Stakeholder Summary
+6
+4.
+System Requirements Specification
+7
+4.1
+System Features
+7
+4.1.1
+Frontend
+7
+4.1.2
+Backend
+7
+4.2
+Functional Requirements
+8
+4.2.1
+User Management
+8
+4.2.2
+Network Scanning
+8
+4.2.3
+Vulnerability Detection
+8
+4.2.4
+Exploit Validation
+8
+4.2.5
+Attack Recommender
+9
+4.2.6
+AI-Based Remediation
+9
+4.2.7
+Dynamic Dashboard Interface
+9
+4.2.8
+Automated Reporting
+10
+4.3
+Non-Functional Requirements
+10
+4.3.1
+Performance
+10
+4.3.2
+Usability
+10
+4.3.3
+Security
+10
+4.3.4
+Reliability
+10
+4.3.5
+Scalability
+11
+4.3.6
+Ethical Compliance
+11
+4.3.7
+Maintainability
+11
+4.3.8
+Compatibility
+11
+4.3.9
+AI Governance
+12
+5.
+Design Artifacts
+12
+5.1
+Use Case Diagram
+12
+5.2
+High Level Use Cases
+13
+5.3
+Expanded Use Cases
+19
+5.3.1
+Use Case 1: 
+Login / Sign Up
+19
+5.3.2
+Use Case 2: Initiate Network Scan
+20
+5.3.3
+Use Case 3: Detect Vulnerabilities
+21
+5.3.4
+Use Case 4: Validate Vulnerabilities
+22
+5.3.5
+Use Case 5: Recommend Attack
+23
+5.3.6
+Use Case 6: Execute Attack
+24
+5.3.7
+Use Case 7: Get Remediation Guidance
+25
+5.3.8
+Use Case 8: Generate AI Remediation Guidance
+26
+5.3.9
+Use Case 9: Generate Report
+27
+5.3.10
+Use Case 10: Audit & Logging
+28
+5.3.11
+Use Case 11: Manage Users and Permissions
+29
+5.3.12
+Use Case 12: Add Authorized Target
+30
+5.3.13
+Use Case 13: Manage System Configuration
+31
+5.4
+Activity Diagram
+33
+5.5
+Entity Relationship Diagram
+34
+5.6
+System Sequence Diagram
+35
+5.6.1
+Login / Sign Up
+35
+5.6.2
+Initiate Network Scan
+36
+5.6.3
+Detect Vulnerabilities
+37
+5.6.4
+Validate Vulnerabilities
+38
+5.6.5
+Recommend Attack
+38
+5.6.6
+Execute Attack
+39
+5.6.7
+Get Remediation Guidance
+40
+5.6.8
+Generate AI Remediation Guidance
+41
+5.6.9
+Generate Report
+42
+5.6.10
+Audit & Logging
+42
+5.6.11
+Manage Users and Permissions
+43
+5.6.12
+Add Authorized Target
+44
+5.6.13
+Manage System Configuration
+45
+5.7
+Data Flow Diagrams
+46
+5.7.1
+Data Flow Diagram: Level 0
+46
+5.7.2
+Data Flow Diagram: Level 1
+47
+5.7.3
+Data Flow Diagram: Level 2
+48
+5.8
+Component Diagram
+49
+List of Tables
+Table 1: Definitions, Acronyms, and Abbreviations
+1
+Table 2 : Summary of problems and their effects
+2
+Table 3 : Roles and Responsibilities of supervisors
+4
+Table 4: Development team members and roles
+5
+Table 5: Role of end users
+5
+Table 6: Responsibilities of administrators
+6
+Table 7: Overview of all key stakeholders
+6
+Table 8: UC - 
+Login / Sign Up
+13
+Table 9: UC - 
+Initiate Network Scan
+13
+Table 10: UC - 
+Detect Vulnerabilities
+13
+Table 11: UC - 
+Validate Vulnerabilities
+14
+Table 12: UC - 
+Recommend Attack
+14
+Table 13: UC - 
+Execute Attack
+14
+Table 14: UC - 
+Get Remediation Guidance
+15
+Table 15: UC - 
+Generate AI Remediation Guidance
+15
+Table 16: UC - 
+Generate Report
+16
+Table 17: UC - 
+Audit & Logging
+16
+Table 18: UC - 
+Manage Users and Permissions
+16
+Table 19: UC - 
+Add Authorized Target
+17
+Table 20: UC - 
+Manage System Configuration
+17
+Table 21: Login / Sign Up
+18
+Table 22: Initiate Network Scan
+19
+Table 23: Detect Vulnerabilities
+20
+Table 24: Validate Vulnerabilities
+21
+Table 25: Recommend Attack
+22
+Table 26: Execute Attack
+23
+Table 27: Get Remediation Guidance
+24
+Table 28: Generate AI Remediation Guidance
+25
+Table 29: Generate Report
+26
+Table 30: Audit & Logging
+27
+Table 31: Manage Users and Permissions
+28
+Table 32: Add Authorized Target
+29
+Table 33: Manage System Configuration
+30
+List of Figures
+Figure 1: : Visual overview of system functionalities and actors
+12
+Figure 2: Workflow of user interactions with the system
+32
+Figure 3: Database schema of entities and their connections
+33
+Figure 4: Shows the login and signup interaction flow between the user and the system.
+34
+Figure 5: Shows the interaction flow for initiating a network scan and receiving scan results.
+35
+Figure 6: Shows how the system analyzes scan data to detect vulnerabilities automatically
+35
+Figure 7: Shows the interaction flow for validating detected vulnerabilities to confirm authenticity.
+36
+Figure 8: Shows how the system and AI Engine interact to recommend suitable attack strategies.
+36
+Figure 9: Shows the sequence of actions during the execution of an attack on validated vulnerabilities.
+37
+Figure 10: Shows the process of requesting and receiving remediation guidance from the AI Engine.
+37
+Figure 11: Shows how the AI Engine generates automated remediation suggestions based on exploit data.
+38
+Figure 12: Shows the interaction flow for compiling, generating, and exporting a security report.
+38
+Figure 13: Shows how the system logs user actions and system events for auditing purposes.
+39
+Figure 14: Shows the administrative flow for creating, modifying, or deleting user accounts and roles.
+39
+Figure 15: Shows the process of adding and validating new authorized network targets by the administrator.
+40
+Figure 16: Shows the interaction sequence for modifying and saving system configuration settings.
+40
+Figure 17: High-level data flow
+41
+Figure 18: Intermediate detail of data processes
+42
+Figure 19: Detailed view of system data processes
+43
+Introduction
+The purpose of this project is to develop an automated system called ASHEN (Automated Security & Host Exploitation Navigator) that helps cybersecurity professionals and network administrators perform vulnerability scanning, exploitation testing, and remediation using AI-powered analysis.
+Traditional vulnerability assessment requires manual execution of tools like Nmap, OpenVAS, and Hydra, which can be time-consuming and error-prone. ASHEN will automate this process and provide a centralized dashboard for reporting and analysis.
+Definitions, Acronyms, and Abbreviations
+Table 
+1
+:
+ Definitions, Acronyms, and Abbreviations
+Term
+Definition
+AI
+Artificial Intelligence
+LLM
+Large Language Model
+CVE
+Common Vulnerabilities and Exposures
+CVSS
+Common Vulnerability Scoring System
+Nmap
+Network Mapper; a tool used for network discovery and security auditing
+OpenVAS
+Open Vulnerability Assessment System; an open-source vulnerability scanner
+Metasploit
+A framework for developing and executing exploit code against remote targets
+Hydra
+A network logon cracker supporting numerous protocols
+SSH
+Secure Shell; a protocol for secure remote login
+HTTP/HTTPS
+Hypertext Transfer Protocol (Secure)
+GUI
+Graphical User Interface
+Vision Document
+Problem Statement
+Table 
+2
+ : Summary of problems and their effects
+Category 
+Description 
+Problem
+Manual vulnerability assessment is time-consuming and error-prone; results often need human interpretation and prioritization. Tool outputs are fragmented across scanners and require consolidation.
+Affects
+Network administrators, security analysts, and organizations needing automated vulnerability checks.
+Impact
+Inconsistent security testing, delayed detection of threats, and possible exploitation by attackers.
+Solution
+An integrated platform that automates scan orchestration, validates exploitability in a safe environment, and provides AI-generated remediation steps prioritized by severity along an interactive dashboard.
+Business Opportunities
+ASHEN can be used by IT companies, security consultants, and network administrators to streamline penetration testing and vulnerability management. It can evolve into a commercial cybersecurity automation tool used in universities, security labs, and IT departments 
+Objectives
+Following are the points of ASHEN:
+To automate vulnerability scanning and exploitation testing.
+To integrate tools like Nmap, OpenVAS, and Hydra into a single system.
+To provide AI-based recommendations for patching vulnerabilities and suggesting remediation.
+To generate detailed and exportable security reports.
+To build a secure, user-friendly dashboard for monitoring scans.
+Scope
+The scope of Automated Security & Host Exploitation Navigator aims to automate vulnerability assessment and exploitation testing within authorized network environments. It integrates tools like Nmap, OpenVAS, Metasploit, and Hydra into a single platform that performs network scanning, vulnerability detection, exploit validation, and AI-based remediation. Through a web dashboard, users can manage scans, select which tests to run, view results, and generate reports. The systemâ€™s AI module analyzes findings and suggests actionable fixes, reducing manual effort and improving security efficiency while maintaining ethical and controlled testing boundaries.
+Constraints
+Must run tools that require Linux (Kali/Ubuntu).
+Requires administrative access to target lab environment
+LLM inference may require GPU or host with reasonable CPU/RAM
+Legal/ethical constraints limit testing to authorized networks
+Stakeholder and User Description
+Market Demographics
+The target market comprises Organizations and educational institutions seeking automated security assessment tools that can be safely deployed in controlled or authorized environments. It is particularly beneficial for security students, researchers, and small IT teams who require an integrated framework for conducting penetration testing without the need for deep technical expertise or manual tool configuration.
+User Environment
+Users will access ASHEN through a secure web-based dashboard on desktops or laptops. The interface allows them to initiate scans, monitor progress, and view detailed vulnerability reports.
+Stakeholder Profiles
+The following section outlines the Stakeholder Profiles.
+Supervisor Team
+Table 
+3
+ : Roles and Responsibilities of supervisors
+Representatives
+Supervisor: Dr. Ammar Rafiq , Co-supervisor Mr. Talha Arif.
+Description 
+They supervise and oversee the project development process.
+Type
+They are technical stakeholders. They have expertise in the project domain.
+Responsibility 
+Give directions to the development team. 
+Ensure that the system will be completed in a given time.
+Keep track of the projectâ€™s progress.
+Ensure the project follows the documents generated during the design phase.
+Ensure that the working product is delivered correctly.
+Success Criteria 
+The completion of features which are being committed by the development team at the start of the project. 
+Involvement
+Requirement reviewer 
+Senior managers
+Review project progress
+Comments
+None
+Development Team
+Table 
+4
+: Development team members and roles
+Representatives
+Sumit Jethani 22F-3852
+Junaid Chaudhary 22F-3332
+Maheen Naeem 22F-3145
+Description
+They are involved in the development of the project.
+Type
+Technical stakeholders
+Responsibility
+Fully involved in the development of the project. 
+Specify requirements like a requirement engineer. 
+Conduct research on system features to develop the model.
+Successful development of proposed model.
+Conduct market analysis and evaluate current limitations in existing systems.
+Success Criteria
+Successful completion of all committed features
+Involvement
+Research and development of the project. 
+Documentation and development of the project 
+Comments
+None
+End Users
+Table 
+5
+: Role of end users
+Representatives
+End Users
+Description
+They are the project's end users who will use it for their specific purposes.
+Type
+External stakeholder
+Responsibility
+Use the platform to run authorized scans and interpret results.
+Involvement
+None
+Comments
+None
+Admin
+Table 
+6
+: Responsibilities of administrators
+Representatives
+Admin
+Description
+They maintain the application after deployment.
+Type
+Internal stakeholder
+Responsibility
+Ensuring that the ASHEN Platform functions normally after deployment.
+Involvement
+Track platform performance and user activity to ensure smooth and stable operations. 
+Review, validate, and moderate user- submitted content and group chats to maintain a safe environment. 
+Oversee user data, manage authentication, and ensure compliance with privacy and security standards.
+Comments
+None
+Stakeholder Summary
+Table 
+7
+: Overview of all key stakeholders
+Stakeholder
+Description
+Responsibility
+Supervisors
+Project Oversight
+Guide and evaluate the project, review milestones, and ensure that technical and ethical standards are met throughout development
+Development Team
+System design and implementation 
+Responsible for designing, developing, testing, and documenting all modules of ASHEN, ensuring functional and performance requirements are met
+Admin
+Configuration and maintenance 
+Manages deployment environments
+End Users
+System Operation
+Use ASHEN to perform scans, analyze vulnerabilities, validate exploits, and generate reports within authorized environments.
+Institution/Organization
+Beneficiary
+Gains a secure, automated platform for vulnerability assessment and cybersecurity training within controlled settings
+System Requirements Specification
+System Features
+ASHEN offers a range of critical features, including:
+Frontend
+User Management:
+ Allows users to securely register, log in, and manage accounts with role-based access control for administrators and analysts
+Dynamic Dashboard Interface
+: Offers an interactive, web-based dashboard that centralizes all system functionalities allowing users to launch scans, monitor live results, visualize vulnerabilities, and manage reports from a single unified view.
+Attack Recommender
+: After the vulnerability detection and exploit validation processes, the AI module analyzes the gathered vulnerability data to identify the most likely attack paths and exploit priorities.
+AI
+-
+Based Remediation: 
+Once vulnerabilities are validated or successfully exploited, the AI module analyzes the systemâ€™s exposure and recommends actionable fixes to strengthen its defense posture.
+Automated Reporting
+: Generates detailed and customizable reports in PDF and HTML formats, including vulnerability summaries, severity levels, exploit outcomes, and recommended fixes.
+Backend
+Host Discovery and Port Scanning
+: Automatically identifies active hosts and open ports within the specified network range using advanced scanning techniques.
+Vulnerability Detection
+: Detects and classifies known vulnerabilities based on CVE data and CVSS scoring standards.
+Exploit Validation
+: Performs safe and controlled exploitation attempts tests to confirm vulnerability impact.
+Functional Requirements
+The system must fulfil specific functional requirements, including:
+User Management
+The system shall allow users to register, log in, and securely manage their accounts.
+The system shall authenticate users with role-based access control for administrators and analysts.
+Network Scanning
+The system shall allow users to input target IP addresses or ranges for scanning.
+The system shall use Nmap to identify active hosts, open ports, and detected services.
+The scan progress and results shall be viewable in real time through the dashboard interface.
+Vulnerability Detection
+The system shall initiate OpenVAS scans to detect known vulnerabilities on identified hosts.
+The system shall retrieve corresponding CVE entries and assign severity levels using CVSS scoring.
+The vulnerabilities and their severity rankings shall be visualized within the dashboard.
+Exploit Validation
+The system shall safely test detected vulnerabilities using controlled, sandboxed environments and well-known tools such as Metasploit and Hydra.
+Planned exploit validation tests include:
+FTP brute-force (
+vsftpd
+)
+SSH credential brute-force
+Shellshock (CGI) proof-of-concept
+MS17-010 (SMB) non-destructive check
+All exploit executions will be non-destructive unless explicitly approved by the analyst. Results will be logged and mapped to their corresponding CVEs.
+All exploit results shall be recorded and displayed on the dashboard for user review.
+Attack Recommender
+The system shall use a local LLM engine (e.g., 
+Ollama
+/
+LLaMA
+) to analyze scan and exploit data.
+The AI shall generate context-aware attack recommendations, such as exploit order, impact likelihood, and required conditions.
+The AI shall suggest which vulnerabilities are most critical and should be prioritized for remediation.
+Recommendations shall be displayed on the dashboard alongside detected vulnerabilities and exploit results.
+AI-Based Remediation
+The system shall analyze vulnerability assessment reports to determine feasible remediation strategies.
+The AI shall suggest specific configuration changes, patching steps, or system hardening measures relevant to the exploited vulnerability.
+The remediation suggestions shall be displayed on the dashboard, linked with each exploit result.
+Users shall be able to interact with the AI module (chat or query interface) to obtain clarification or alternate solutions.
+Dynamic Dashboard Interface
+The system shall provide an interactive, web-based dashboard as the central control panel for all features.
+The dashboard shall allow users to start scans, monitor progress, view vulnerabilities, review exploit results, and access AI remediation suggestions.
+The dashboard shall include data visualizations such as progress bars, severity charts, and scan summaries for ease of interpretation.
+The interface shall support filtering, searching, and exporting of results directly from the dashboard.
+Automated Reporting
+The system shall generate detailed vulnerability assessment reports in PDF and HTML formats.
+Reports shall include network summaries, vulnerability details, exploit validations, AI-based recommendations, and overall risk evaluations.
+The reports shall be downloadable through the dashboard and stored in the system for future reference.
+Non-Functional Requirements
+Performance
+The system shall support 10 concurrent scan tasks without affecting responsiveness.
+Dashboard updates (for scan results or vulnerability lists) shall appear within 3 seconds of backend completion.
+Full report generation for a medium-scale scan (â‰¤500 hosts) shall complete within 120 seconds.
+The system shall process and display vulnerability data for up to 1000 hosts per hour per scan worker.
+Usability
+The interface shall be simple and intuitive, allowing users to initiate scans and view reports easily.
+The dashboard shall include clear visual indicators such as progress bars and vulnerability charts.
+Security
+User credentials and stored data shall be encrypted.
+Scanning and exploitation shall be restricted to authorized networks and sandboxed environments.
+Reliability
+The system shall automatically retry failed scan jobs up to 3 times.
+Database backups shall occur every 24 hours, with retention for 90 days.
+Upon service restart, incomplete scan sessions shall resume automatically if possible.
+The dashboard shall notify users if any worker fails or disconnects.
+Scalability
+The system shall allow easy addition of new modules or tools without major structural changes.
+Ethical Compliance
+The system shall display a disclaimer before performing any scan or exploit.
+All operations shall comply with authorized and ethical security practices.
+Maintainability
+The system shall be designed with modular architecture, allowing individual components such as scanning modules, AI engines, and dashboard interfaces to be updated or replaced without affecting other parts of the system.
+All source code shall follow clear naming conventions, inline documentation, and version control practices to simplify debugging, updates, and future enhancements.
+Compatibility
+The system shall operate on Linux (Ubuntu 22.04 or later) as the primary environment.
+The dashboard shall be accessible via modern browsers (Chrome, Edge, Firefox).
+The backend shall integrate with Nmap, 
+Masscan
+, Hydra, Metasploit, and OpenVAS via command or API wrappers.
+The AI subsystem shall support integration with local LLMs (
+Ollama
+, 
+LLaMA
+) and cloud inference (optional).
+Reports shall be exportable in PDF, HTML, and CSV formats for interoperability with third-party tools.
+AI Governance
+All AI-generated outputs (attack recommendations and remediation guidance) are advisory only; no automated remediation actions are applied without human approval.
+The system shall record the AI model version, configuration, prompt, and timestamp for every generated suggestion.
+AI responses shall pass through safety filters to block destructive or unethical instructions.
+Analysts may provide feedback (â€œAccept,â€ â€œReject,â€ â€œRegenerateâ€) to continuously improve guidance accuracy.
+AI model updates or retraining must be logged as versioned artifacts under admin supervision.
+Design Artifacts
+Use Case Diagram
+Figure 
+1
+: 
+: Visual overview of system functionalities and actors
+High Level Use Cases
+Use Case 1
+Table 
+8
+: UC - 
+Login / Sign Up
+Use Case ID
+UC-01
+Use Case Name
+Login / Sign Up
+Actor
+User
+, Admin
+Type
+Primary
+Description
+Enables the user to create a new account or log in with existing credentials to access the ASHEN system securely.
+Use Case 2
+Table 
+9
+: UC - 
+Initiate Network Scan
+Use Case ID
+UC-02
+Use Case Name
+Initiate Network Scan
+Actor
+User
+Type
+Primary
+Description
+Allows the user to perform network scans on authorized targets to identify open ports and active services.
+Use Case 3
+Table 
+10
+: UC -
+ 
+Detect Vulnerabilities
+Use Case ID
+UC-03
+Use Case Name
+Detect Vulnerabilities
+Actor
+User
+Type
+Primary
+Description
+Identifies vulnerabilities and weaknesses within scanned systems using automated and AI-based analysis.
+Use Case 4
+Table 
+11
+: UC - 
+Validate
+ Vulnerabilities
+Use Case ID
+UC-04
+Use Case Name
+Validate
+ Vulnerabilities
+Actor
+User
+Type
+Primary
+Description
+Confirms the authenticity of detected vulnerabilities to eliminate false positives and ensure accuracy.
+Use Case 5
+Table 
+12
+: UC - 
+Recommend Attack
+Use Case ID
+UC-05
+Use Case Name
+Recommend Attack
+Actor
+User, AI Engine (LLM Worker)
+Type
+Primary
+Description
+Suggests suitable attack techniques and exploitation methods based on validated vulnerabilities.
+Use Case 6
+Table 
+13
+: UC - 
+Execute Attack
+Use Case ID
+UC-06
+Use Case Name
+Execute Attack
+Actor
+User, AI Engine (LLM Worker)
+Type
+Primary
+Description
+Executes selected attacks or exploit modules against validated vulnerabilities in a controlled environment.
+Use Case 7
+Table 
+14
+: UC - 
+Get Remediation Guidance
+Use Case ID
+UC-07
+Use Case Name
+Get Remediation Guidance
+Actor
+User, AI Engine (LLM Worker)
+Type
+Primary
+Description
+Provides recommended steps and automated solutions for fixing or mitigating discovered vulnerabilities.
+Use Case 8
+Table 
+15
+: UC - 
+Generate AI Remediation Guidance
+Use Case ID
+UC-08
+Use Case Name
+Generate AI Remediation Guidance
+Actor
+AI Engine (LLM Worker)
+Type
+Primary
+Description
+Uses AI to automatically generate detailed remediation procedures based on vulnerability data and exploit context.
+Use Case 9
+Table 
+16
+: UC - 
+Generate 
+Report
+Use Case ID
+UC-09
+Use Case Name
+Generate Report
+Actor
+User
+Type
+Primary
+Description
+Compiles and presents comprehensive reports summarizing scanning, validation, attack, and remediation activities.
+Use Case 10
+Table 
+17
+: UC - 
+Audit & Logging
+Use Case ID
+UC-10
+Use Case Name
+Audit & Logging
+Actor
+System
+Type
+Primary
+Description
+Records all user actions and system events to maintain traceability and ensure accountability within ASHEN.
+Use Case 11
+Table 
+18
+: UC - 
+Manage Users and Permissions
+Use Case ID
+UC-11
+Use Case Name
+Manage Users and Permissions
+Actor
+Admin
+Type
+Primary
+Description
+Allows administrators to create, update, or remove user accounts and define access permissions in the system.
+Use Case 12
+Table 
+19
+: UC - 
+Add Authorized Target
+Use Case ID
+UC-12
+Use Case Name
+Add Authorized Target
+Actor
+Admin
+Type
+Primary
+Description
+Enables administrators to add, edit, or remove network targets that are authorized for penetration testing.
+Use Case 13
+Table 
+20
+: UC - 
+Manage System Configuration
+Use Case ID
+UC-13
+Use Case Name
+Manage System Configuration
+Actor
+Admin
+Type
+Primary
+Description
+Lets
+ administrators configure system parameters, AI settings, and operational preferences for optimal performance.
+Expanded Use Cases
+The Following section 
+represents
+ the 
+expanded use cases
+ for 
+ASHEN
+ 
+Use Case 1: 
+Login / Sign Up
+Table 
+21
+: 
+Login / Sign Up
+Use Case ID:
+UC-01
+Use Case Name:
+Login / Sign Up
+Created By:
+Junaid Chaudhary
+Last updated by:
+Date Created:
+20/10/2025
+Revision Date:
+Actor
+User
+Description
+Enables users to create new accounts or log in with existing credentials to securely access the ASHEN system.
+Trigger
+User selects the 
+Login / Sign Up
+ option on the home interface.
+Pre-condition
+System is online; user provides valid credentials or registration details.
+Post-condition
+User session is established and dashboard access granted according to role.
+Normal flow
+Selects 
+Login
+ or 
+Sign Up
+.
+System authenticates or registers user.
+Access granted.
+Alternative flow
+2
+a. Invalid credentials
+Exceptions
+Network or database failure during authentication.
+Includes
+UC-
+10
+ (Audit & Logging
+)
+Frequency of use
+High
+Special Requirements
+Password hashing, input validation, and session timeout handling.
+Use Case 2: 
+Initiate Network Scan
+Table 
+22
+: 
+Initiate Network Scan
+Use Case ID:
+UC-02
+Use Case Name:
+Initiate Network Scan
+Created By:
+Junaid Chaudhary
+Last updated by:
+Date Created:
+20/10/2025
+Revision Date:
+Actor
+User
+Description
+Allows the user to perform network scans on authorized targets to discover open ports, services, and vulnerabilities.
+Trigger
+User selects 
+Start Scan
+ from the dashboard.
+Pre-condition
+User authenticated; at least one authorized target available.
+Post-condition
+Scan results saved for vulnerability detection.
+Normal flow
+User selects target and scan parameters.
+System verifies authorization.
+Scan executed.4. Results displayed.
+Alternative flow
+2a. Unauthorized target â†’ access denied.
+3a. Scan interrupted â†’ system resumes or restarts.
+Exceptions
+Target unreachable, network timeout, or invalid parameters.
+Includes
+UC-03 (Detect Vulnerabilities), UC-10 (Audit & Logging)
+Frequency of use
+Medium
+Special Requirements
+Efficient scanning engine, error recovery, and resource optimization.
+Use Case 3:
+ 
+Detect Vulnerabilities
+Table 
+23
+: 
+Detect Vulnerabilities
+Use Case ID:
+UC-03
+Use Case Name:
+Detect Vulnerabilities
+Created By:
+Junaid Chaudhary
+Last updated by:
+Date Created:
+20/10/2025
+Revision Date:
+Actor
+User
+Description
+Analyzes scan results to identify potential vulnerabilities using AI-driven and rule-based methods.
+Trigger
+System completes a network scan.
+Pre-condition
+Valid scan data available.
+Post-condition
+Vulnerabilities list generated with severity levels.
+Normal flow
+System loads scan output.
+AI analyzes data.
+Findings stored and shown to user.
+Alternative flow
+2a. AI offline â†’ fallback to rule-based detection.
+Exceptions
+Data corruption, permission errors.
+Includes
+UC-
+10
+ (Audit & Logging
+)
+Frequency of use
+Medium
+Special Requirements
+AI model reliability and efficient parsing of large data sets.
+Use Case 4: 
+Validate
+ Vulnerabilities
+Table 
+24
+: 
+Validate
+ Vulnerabilities
+Use Case ID:
+UC-04
+Use Case Name:
+Validate
+ Vulnerabilities
+Created By:
+Junaid Chaudhary
+Last updated by:
+Date Created:
+20/10/2025
+Revision Date:
+Actor
+User
+Description
+Confirms detected vulnerabilities to remove false positives and prioritize exploitable issues.
+Trigger
+User selects 
+Validate
+ option for detected vulnerabilities.
+Pre-condition
+Vulnerability data exists from prior detection.
+Post-condition
+Validated vulnerabilities marked for exploitation or remediation.
+Normal flow
+User selects items to validate.
+System executes validation tests.
+Results updated.
+Alternative flow
+2a. Validation timeout
+Exceptions
+Network disruption or corrupted data.
+Includes
+UC-
+10
+ (Audit & Logging
+)
+Frequency of use
+Medium
+Special Requirements
+Real-time feedback and accurate validation algorithms.
+Use Case 5: 
+Recommend Attack
+Table 
+25
+: 
+Recommend Attack
+Use Case ID:
+UC-05
+Use Case Name:
+Recommend Attack
+Created By:
+Junaid Chaudhary
+Last updated by:
+Date Created:
+20/10/2025
+Revision Date:
+Actor
+User
+, AI Engine (LLM Worker)
+Description
+Suggests appropriate attack or exploitation techniques for validated vulnerabilities.
+Trigger
+User requests attack recommendations.
+Pre-condition
+Validated vulnerabilities available.
+Post-condition
+AI-generated attack list shown.
+Normal flow
+User selects vulnerability.
+System sends context to AI.
+AI returns recommended attacks.
+System displays results.
+Alternative flow
+3a. AI unavailable â†’ show cached recommendations.
+Exceptions
+Model timeout or API failure.
+Includes
+UC-
+10
+ (Audit & Logging
+)
+Frequency of use
+Medium
+Special Requirements
+Secure AI communication and output validation.
+Use Case 6: 
+Execute Attack
+Table 
+26
+: 
+Execute Attack
+Use Case ID:
+UC-06
+Use Case Name:
+Execute Attack
+Created By:
+Junaid Chaudhary
+Last updated by:
+Date Created:
+20/10/2025
+Revision Date:
+Actor
+User
+, AI Engine (LLM Worker)
+Description
+Executes chosen attacks on validated vulnerabilities within a sandboxed environment.
+Trigger
+User initiates attack execution.
+Pre-condition
+Authorization confirmed; target validated.
+Post-condition
+Execution results stored and logged.
+Normal flow
+User selects attack.
+System verifies authorization.
+AI adjusts parameters.
+Attack runs.
+Results displayed.
+Alternative flow
+2a. Authorization fails â†’ cancelled.
+4a. User aborts â†’ rollback.
+Exceptions
+Firewall block or sandbox crash.
+Includes
+UC-
+10
+ (Audit & Logging
+)
+Frequency of use
+Medium
+Special Requirements
+Sandbox isolation, safe rollback, and encryption of results.
+Use Case 7: 
+Get Remediation Guidance
+Table 
+27
+: 
+Get Remediation Guidance
+Use Case ID:
+UC-07
+Use Case Name:
+Get Remediation Guidance
+Created By:
+Junaid Chaudhary
+Last updated by:
+Date Created:
+20/10/2025
+Revision Date:
+Actor
+User
+, AI Engine (LLM Worker)
+Description
+Provides recommended mitigation steps and automated AI guidance for resolving vulnerabilities.
+Trigger
+User requests remediation advice.
+Pre-condition
+Validated or executed vulnerabilities available.
+Post-condition
+Remediation guidance displayed and saved.
+Normal flow
+User selects vulnerability.
+System gathers data.
+AI generates solutions.
+System presents output.
+Alternative flow
+3a. AI offline â†’ use default templates.
+Exceptions
+Data mismatch or network error.
+Includes
+UC-06 (Execute Attack), UC-08 (Generate AI Remediation Guidance), UC-10 (Audit & Logging)
+Frequency of use
+High
+Special Requirements
+Reliable AI model and user-friendly presentation format.
+Use Case 8
+:
+ 
+Generate AI Remediation Guidance
+Table 
+28
+: 
+Generate AI Remediation Guidance
+Use Case ID:
+UC-08
+Use Case Name:
+Generate AI Remediation Guidance
+Created By:
+Junaid Chaudhary
+Last updated by:
+Date Created:
+20/10/2025
+Revision Date:
+Actor
+AI Engine (LLM Worker)
+Description
+Uses AI to generate customized remediation procedures based on exploit results.
+Trigger
+Invoked by remediation or report generation module.
+Pre-condition
+Exploit or vulnerability data supplied.
+Post-condition
+AI remediation output stored.
+Normal flow
+User open AI
+ generated guidance 
+.
+User approve the guidance 
+System saves recommendations.
+Alternative flow
+2a. 
+User did not approved the guidance -> regenerate guidance
+Exceptions
+Model failure or timeout.
+Includes
+UC-
+10
+ (Audit & Logging
+)
+Frequency of use
+High
+Special Requirements
+Model explainability and secure storage of AI outputs.
+Use Case 9: Generate 
+Report
+Table 
+29
+: 
+Generate 
+Report
+Use Case ID:
+UC-09
+Use Case Name:
+Generate Report
+Created By:
+Junaid Chaudhary
+Last updated by:
+Date Created:
+20/10/2025
+Revision Date:
+Actor
+User
+Description
+Produces a complete security assessment report combining scan, attack, and remediation data.
+Trigger
+User selects 
+Generate Report
+ option.
+Pre-condition
+All prior modules completed.
+Post-condition
+Final report generated and exported.
+Normal flow
+User requests report.
+System aggregates data.
+AI adds summaries.
+Report formatted and shown.
+Alternative flow
+NA
+Exceptions
+File write error.
+Includes
+UC-06 (Execute Attack), UC-08 (Generate AI Remediation Guidance), UC-10 (Audit & Logging)
+Frequency of use
+Medium
+Special Requirements
+Export in PDF/CSV formats and digital signing of reports.
+Use Case 10: 
+Audit & Logging
+Table 
+30
+: 
+Audit & Logging
+Use Case ID:
+UC-10
+Use Case Name:
+Audit & Logging
+Created By:
+Junaid Chaudhary
+Last updated by:
+Date Created:
+20/10/2025
+Revision Date:
+Actor
+System (Automated Process)
+Description
+Tracks and records all user and system activities for traceability and compliance.
+Trigger
+Any system event or user action.
+Pre-condition
+Logging service active.
+Post-condition
+Logs securely stored.
+Normal flow
+Event triggers log.
+Details captured.
+Stored in audit DB.
+Alternative flow
+NA
+Exceptions
+Write failure or permission error.
+Includes
+None
+Frequency of use
+High
+Special Requirements
+Tamper-proof storage and time-stamped entries.
+Use Case 11: 
+Manage Users and Permissions
+Table 
+31
+: 
+Manage Users and Permissions
+Use Case ID:
+UC-11
+Use Case Name:
+Manage Users and Permissions
+Created By:
+Junaid Chaudhary
+Last updated by:
+Date Created:
+20/10/2025
+Revision Date:
+Actor
+Admin
+Description
+Enables admin to add, modify, or delete user accounts and assign roles.
+Trigger
+Admin opens 
+User Management
+.
+Pre-condition
+Admin authenticated.
+Post-condition
+Updated user and role data stored.
+Normal flow
+Admin views users.
+Selects add/edit/delete.
+System updates records.
+Confirmation shown.
+Alternative flow
+2a. Duplicate username â†’ error shown.
+Exceptions
+DB failure or invalid input.
+Includes
+UC-
+10
+ (Audit & Logging
+)
+Frequency of use
+Low
+Special Requirements
+Secure credential storage and RBAC enforcement.
+Use Case 12: 
+Add Authorized Target
+Table 
+32
+: 
+Add Authorized Target
+Use Case ID:
+UC-12
+Use Case Name:
+Add Authorized Target
+Created By:
+Junaid Chaudhary
+Last updated by:
+Date Created:
+20/10/2025
+Revision Date:
+Actor
+Admin
+Description
+Allows admin to register or remove network targets authorized for testing.
+Trigger
+Admin opens 
+Target Management
+.
+Pre-condition
+Admin logged in with privileges.
+Post-condition
+Target stored or updated in database.
+Normal flow
+Admin inputs target info.
+System validates data.
+Target saved.
+Confirmation sent.
+Alternative flow
+2a. Duplicate target â†’ warning shown.
+Exceptions
+Invalid IP/domain or DB error.
+Includes
+UC-10 (Audit & Logging)
+Frequency of use
+Low
+Special Requirements
+Input validation and secure data handling.
+Use Case 13: Manage System Configuration
+Table 
+33
+: 
+Manage System Configuration
+Use Case ID:
+UC-13
+Use Case Name:
+Manage System Configuration
+Created By:
+Junaid Chaudhary
+Last updated by:
+Date Created:
+20/10/2025
+Revision Date:
+Actor:
+Admin
+Description:
+Allows the administrator to configure and update system parameters such as scanning tool paths, AI model settings, thresholds, and concurrency limits.
+Trigger:
+Administrator selects â€œSystem Configurationâ€ from the dashboard.
+Pre-condition:
+Administrator is authenticated with elevated privileges.
+Post-condition:
+Updated configurations are validated and applied system-wide without interrupting active processes.
+Normal flow:
+Administrator navigates to the configuration section.
+System displays all configurable settings.
+Administrator modifies desired parameters (e.g., OpenVAS path, AI model version).
+Administrator saves changes.
+System validates and reloads configurations dynamically.
+Alternative flow:
+3a. Administrator inputs invalid configuration values. 
+3a1. System rejects update and displays error message with corrective hints.
+Exceptions:
+Configuration file lock, validation failure, or permission error.
+Includes:
+UC-12 (Audit & Logging).
+Frequency of use:
+Low (performed occasionally during maintenance or updates).
+Special Requirements:
+Dynamic reload support without full restart, configuration versioning, rollback option, and admin confirmation prompts for critical changes.
+Activity Diagram
+Figure 
+2
+: 
+Workflow of user interactions with the system
+Entity Relationship Diagram
+Figure 
+3
+: 
+Database schema of entities and their connections
+System Sequence Diagram
+The Following section graphically illustrates the 
+SSDs
+ for 
+ASHEN
+Login / Sign Up
+Figure 
+4
+: 
+Shows the login and signup interaction flow between the user and the system.
+Initiate Network Scan
+Figure 
+5
+: 
+Shows the interaction flow for initiating a network scan and receiving scan results.
+Detect Vulnerabilities
+Figure 
+6
+: 
+Shows how the system analyzes scan data to detect vulnerabilities automatically
+.
+Validate 
+Vulnerabilities
+Figure 
+7
+: 
+Shows the interaction flow for validating detected vulnerabilities to confirm authenticity.
+Recommend Attack
+Figure 
+8
+: 
+Shows how the system and AI Engine interact to recommend suitable attack strategies.
+Execute Attack
+Figure 
+9
+: 
+Shows the sequence of actions during the execution of an attack on validated vulnerabilities.
+Get 
+Remediation Guidance
+Figure 
+10
+: 
+Shows the process of requesting and receiving remediation guidance from the AI Engine.
+Generate AI Remediation Guidance
+Figure 
+11
+: 
+Shows how the AI Engine generates automated remediation suggestions based on exploit data.
+Generate Report
+Figure 
+12
+: 
+Shows the interaction flow for compiling, generating, and exporting a security report.
+Audit & Logging
+Figure 
+13
+: 
+Shows how the system logs user actions and system events for auditing purposes.
+Manage Users and Permissions
+Figure 
+14
+: 
+Shows the administrative flow for creating, modifying, or deleting user accounts and roles.
+Add Authorized Target
+Figure 
+15
+: 
+Shows the process of adding and validating new authorized network targets by the administrator.
+Manage System Configuration
+Figure 
+16
+: 
+Shows the interaction sequence for modifying and saving system configuration settings.
+Data
+ Flow Diagrams
+The Following section graphically illustrates the data flow for 
+ASHEN
+.
+Data Flow Diagram: Level 0
+Figure 
+17
+:
+ High-level data flow
+Data Flow Diagram: Level 1
+Figure 
+18
+: I
+ntermediate detail of data processes
+Data Flow Diagram: Level 2
+Figure 
+19
+: D
+etailed view of system data processes
+Component Diagram

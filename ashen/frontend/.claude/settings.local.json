@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cd /tmp)",
+      "Bash(unzip -o C:/Users/HP/Downloads/ash-insight-dash-main.zip -d ash-insight-dash)",
+      "Bash(pandoc \"D:/FAST-NUCES/FYP-2/ashen/ashen/documents/ASHEN_Sprint_Roadmap.docx\" -o /tmp/sprint_roadmap.md)",
+      "Bash(pandoc \"D:/FAST-NUCES/FYP-2/ashen/ashen/documents/SRS-ASHEN-v3.docx\" -o /tmp/srs.md)",
+      "Bash(for f:*)",
+      "Bash(do echo:*)",
+      "Read(//d/FAST-NUCES/FYP-2/ashen-frontend/**)",
+      "Bash(done)"
+    ]
+  }
+}
