@@ -39,6 +39,7 @@ def init_db():
     # All models must be imported here so SQLAlchemy knows about them
     # before calling create_all()
     from app.models import admin, user, user_session, audit_log, target_system, scan_request
-    from app.models import scan, vulnerability  # these were missing
+    from app.models import scan, vulnerability, exploit
+    from app.models import report
     Base.metadata.create_all(bind=engine)
     seed_admin()
