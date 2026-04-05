@@ -324,6 +324,86 @@ export const admin = {
   },
 };
 
+// ── SSE streaming helper ─────────────────────────────────────────────
+
+/**
+ * POST to an SSE endpoint and call `onToken` for each token as it arrives.
+ * Resolves with the full concatenated text once the stream ends.
+ */
+async function streamSSE(
+  path: string,
+  body: Record<string, unknown>,
+  onToken: (token: string) => void,
+): Promise<string> {
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    ...authHeaders(),
+  };
+
+  const res = await fetch(`${BASE_URL}${path}`, {
+    method: "POST",
+    headers,
+    body: JSON.stringify(body),
+  });
+
+  if (res.status === 401) {
+    localStorage.removeItem("ashen_token");
+    localStorage.removeItem("ashen_user");
+    window.location.href = "/login";
+    throw new Error("Session expired");
+  }
+
+  if (!res.ok) {
+    const errBody = await res.json().catch(() => ({}));
+    throw new ApiError(res.status, errBody.detail || res.statusText);
+  }
+
+  const reader = res.body?.getReader();
+  if (!reader) throw new Error("Streaming not supported");
+
+  const decoder = new TextDecoder();
+  let full = "";
+  let buffer = "";
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+
+    buffer += decoder.decode(value, { stream: true });
+
+    // Parse SSE lines from the buffer
+    const lines = buffer.split("\n");
+    buffer = lines.pop() ?? ""; // keep incomplete line in buffer
+
+    let currentEvent = "token";
+    for (const line of lines) {
+      if (line.startsWith("event: ")) {
+        currentEvent = line.slice(7).trim();
+      } else if (line.startsWith("data: ")) {
+        const raw = line.slice(6);
+        if (currentEvent === "error") {
+          try {
+            throw new ApiError(503, JSON.parse(raw));
+          } catch (e) {
+            if (e instanceof ApiError) throw e;
+            throw new ApiError(503, raw);
+          }
+        }
+        if (currentEvent === "done") break;
+        try {
+          const token = JSON.parse(raw) as string;
+          full += token;
+          onToken(token);
+        } catch {
+          // skip malformed data lines
+        }
+      }
+    }
+  }
+
+  return full;
+}
+
 // AI Engine ==================================================================
 
 export interface AIRecommendationResponse {
@@ -380,11 +460,32 @@ export const ai = {
     });
   },
 
-  chat(question: string, vuln_id?: number, exploit_id?: number) {
+  chat(question: string, vuln_id?: number, exploit_id?: number, remediation_context?: string) {
     return request<AIChatResponse>("/ai/chat", {
       method: "POST",
-      body: JSON.stringify({ question, vuln_id, exploit_id }),
+      body: JSON.stringify({ question, vuln_id, exploit_id, remediation_context }),
     });
+  },
+
+  recommendAttacksStream(
+    params: { scan_id: number; vuln_id?: number },
+    onToken: (token: string) => void,
+  ) {
+    return streamSSE("/ai/recommend-attacks/stream", params, onToken);
+  },
+
+  remediateStream(
+    params: { vuln_id?: number; exploit_id?: number; description?: string },
+    onToken: (token: string) => void,
+  ) {
+    return streamSSE("/ai/remediate/stream", params, onToken);
+  },
+
+  chatStream(
+    params: { question: string; vuln_id?: number; exploit_id?: number; remediation_context?: string },
+    onToken: (token: string) => void,
+  ) {
+    return streamSSE("/ai/chat/stream", params, onToken);
   },
 };
 

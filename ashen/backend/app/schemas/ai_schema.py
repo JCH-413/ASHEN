@@ -21,3 +21,4 @@ class AIChatRequest(BaseModel):
     question: str
     vuln_id: Optional[int] = None
     exploit_id: Optional[int] = None
+    remediation_context: Optional[str] = None

@@ -2,34 +2,56 @@ import { PageShell } from "@/components/PageShell";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Crosshair, Loader2, Check, X, RotateCcw, Bot } from "lucide-react";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef, useSyncExternalStore } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { EmptyState } from "@/components/EmptyState";
 import {
   scans as scansApi,
-  ai as aiApi,
   vulns as vulnsApi,
   ScanHistoryItem,
   Vulnerability,
-  ApiError,
 } from "@/lib/api";
+import {
+  attackRecommendationStore,
+  AttackRecommendationState,
+} from "@/lib/attack-recommendation-store";
 
+// ── Hook to subscribe to the singleton store ───────────────────────
+function useAttackRecommendationStore(): AttackRecommendationState {
+  return useSyncExternalStore(
+    attackRecommendationStore.onChange,
+    attackRecommendationStore.getState,
+  );
+}
+
+// ── Component ──────────────────────────────────────────────────────
 const AttackRecommendations = () => {
   const { toast } = useToast();
+  const prevErrorRef = useRef("");
 
-  // Scan selector
+  // All AI state comes from the singleton store
+  const store = useAttackRecommendationStore();
+
+  // Local-only state (dropdown data)
   const [scanHistory, setScanHistory] = useState<ScanHistoryItem[]>([]);
-  const [selectedScanId, setSelectedScanId] = useState<string>("");
-
-  // Vulnerabilities for the selected scan
   const [scanVulns, setScanVulns] = useState<Vulnerability[]>([]);
 
-  // AI results
-  const [recommendation, setRecommendation] = useState<string>("");
-  const [model, setModel] = useState<string>("");
-  const [generatedAt, setGeneratedAt] = useState<string>("");
-  const [generating, setGenerating] = useState(false);
-  const [reviewAction, setReviewAction] = useState<string>("");
+  // Show toasts for errors from the store
+  useEffect(() => {
+    if (store.lastError && store.lastError !== prevErrorRef.current) {
+      toast({ title: "Error", description: store.lastError, variant: "destructive" });
+    }
+    prevErrorRef.current = store.lastError;
+  }, [store.lastError, toast]);
+
+  // Show toast when generation finishes
+  const prevGeneratingRef = useRef(store.generating);
+  useEffect(() => {
+    if (prevGeneratingRef.current && !store.generating && store.recommendation && !store.lastError) {
+      toast({ title: "Recommendations Generated", description: "Model: tinyllama" });
+    }
+    prevGeneratingRef.current = store.generating;
+  }, [store.generating, store.recommendation, store.lastError, toast]);
 
   // Load scan history
   const fetchScans = useCallback(async () => {
@@ -40,53 +62,24 @@ const AttackRecommendations = () => {
       // ignore
     }
   }, []);
-
   useEffect(() => { fetchScans(); }, [fetchScans]);
 
   // Load vulns when scan changes
   useEffect(() => {
-    if (!selectedScanId) { setScanVulns([]); return; }
-    vulnsApi.byScan(Number(selectedScanId))
+    if (!store.selectedScanId) { setScanVulns([]); return; }
+    vulnsApi.byScan(Number(store.selectedScanId))
       .then(setScanVulns)
       .catch(() => setScanVulns([]));
-  }, [selectedScanId]);
+  }, [store.selectedScanId]);
 
-  // Generate recommendations
-  const handleGenerate = async () => {
-    if (!selectedScanId) return;
-    setGenerating(true);
-    setRecommendation("");
-    setReviewAction("");
-    try {
-      const res = await aiApi.recommendAttacks(Number(selectedScanId));
-      setRecommendation(res.recommendation);
-      setModel(res.model);
-      setGeneratedAt(res.generated_at);
-      toast({ title: "Recommendations Generated", description: `Model: ${res.model}` });
-    } catch (e) {
-      const msg = e instanceof ApiError ? e.message : "Failed to generate recommendations";
-      toast({ title: "Error", description: msg, variant: "destructive" });
-    } finally {
-      setGenerating(false);
-    }
-  };
+  // ── Handlers (delegate to store) ─────────────────────────────────
 
-  // Review action
-  const handleReview = async (action: "accept" | "reject" | "regenerate") => {
-    try {
-      const res = await aiApi.review(action, Number(selectedScanId));
-      setReviewAction(action);
-      toast({ title: `Recommendation ${action}ed` });
+  const handleGenerate = () => attackRecommendationStore.generate();
 
-      if (action === "regenerate" && res.new_recommendation) {
-        setRecommendation(res.new_recommendation);
-        setReviewAction("");
-      }
-    } catch (e) {
-      const msg = e instanceof ApiError ? e.message : "Review failed";
-      toast({ title: "Error", description: msg, variant: "destructive" });
-    }
-  };
+  const handleReview = (action: "accept" | "reject" | "regenerate") =>
+    attackRecommendationStore.review(action);
+
+  // ── Render ───────────────────────────────────────────────────────
 
   return (
     <PageShell title="Attack Recommendations">
@@ -98,7 +91,7 @@ const AttackRecommendations = () => {
       <div className="flex items-end gap-4 mb-6">
         <div className="space-y-1 flex-1 max-w-xs">
           <label className="text-xs font-medium">Select Scan</label>
-          <Select value={selectedScanId} onValueChange={setSelectedScanId}>
+          <Select value={store.selectedScanId} onValueChange={attackRecommendationStore.setSelectedScanId}>
             <SelectTrigger>
               <SelectValue placeholder="Choose a completed scan..." />
             </SelectTrigger>
@@ -111,8 +104,8 @@ const AttackRecommendations = () => {
             </SelectContent>
           </Select>
         </div>
-        <Button onClick={handleGenerate} disabled={!selectedScanId || generating} className="gap-2">
-          {generating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Crosshair className="h-4 w-4" />}
+        <Button onClick={handleGenerate} disabled={!store.selectedScanId || store.generating} className="gap-2">
+          {store.generating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Crosshair className="h-4 w-4" />}
           Generate
         </Button>
       </div>
@@ -138,52 +131,57 @@ const AttackRecommendations = () => {
       )}
 
       {/* AI Output */}
-      {generating ? (
-        <div className="flex flex-col items-center justify-center py-16 gap-3">
-          <Loader2 className="h-8 w-8 animate-spin text-accent" />
-          <p className="text-sm text-muted-foreground">Generating attack recommendations with AI...</p>
-        </div>
-      ) : recommendation ? (
+      {store.recommendation || store.generating ? (
         <div className="stat-card">
           <div className="flex items-center gap-2 mb-4">
-            <Bot className="h-5 w-5 text-accent" />
+            {store.generating ? (
+              <Loader2 className="h-5 w-5 animate-spin text-accent" />
+            ) : (
+              <Bot className="h-5 w-5 text-accent" />
+            )}
             <h2 className="font-semibold">AI Recommendation</h2>
-            <span className="ml-auto text-xs text-muted-foreground">
-              Model: {model} | {generatedAt ? new Date(generatedAt).toLocaleString() : ""}
-            </span>
+            {store.generating ? (
+              <span className="ml-auto text-xs text-muted-foreground">Streaming...</span>
+            ) : (
+              <span className="ml-auto text-xs text-muted-foreground">
+                Model: {store.model} | {store.generatedAt ? new Date(store.generatedAt).toLocaleString() : ""}
+              </span>
+            )}
           </div>
 
-          <div className="bg-foreground/5 rounded-md p-4 font-mono text-sm whitespace-pre-wrap mb-4">
-            {recommendation}
+          <div className="bg-foreground/5 rounded-md p-4 font-mono text-sm whitespace-pre-wrap mb-4 min-h-[100px]">
+            {store.recommendation || <span className="text-muted-foreground">Waiting for first tokens...</span>}
           </div>
 
           {/* Review buttons */}
-          <div className="flex gap-2">
-            <Button
-              size="sm"
-              variant={reviewAction === "accept" ? "default" : "outline"}
-              className="gap-1"
-              onClick={() => handleReview("accept")}
-            >
-              <Check className="h-3 w-3" /> Accept
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              className="gap-1"
-              onClick={() => handleReview("reject")}
-            >
-              <X className="h-3 w-3" /> Reject
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              className="gap-1"
-              onClick={() => handleReview("regenerate")}
-            >
-              <RotateCcw className="h-3 w-3" /> Regenerate
-            </Button>
-          </div>
+          {!store.generating && store.recommendation && (
+            <div className="flex gap-2">
+              <Button
+                size="sm"
+                variant={store.reviewAction === "accept" ? "default" : "outline"}
+                className="gap-1"
+                onClick={() => handleReview("accept")}
+              >
+                <Check className="h-3 w-3" /> Accept
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                className="gap-1"
+                onClick={() => handleReview("reject")}
+              >
+                <X className="h-3 w-3" /> Reject
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                className="gap-1"
+                onClick={() => handleReview("regenerate")}
+              >
+                <RotateCcw className="h-3 w-3" /> Regenerate
+              </Button>
+            </div>
+          )}
         </div>
       ) : (
         <EmptyState message="Select a scan and click Generate to get AI attack recommendations." />
