@@ -323,3 +323,102 @@ export const admin = {
     );
   },
 };
+
+// AI Engine ==================================================================
+
+export interface AIRecommendationResponse {
+  scan_id: number;
+  vuln_id: number | null;
+  recommendation: string;
+  model: string;
+  generated_at: string;
+}
+
+export interface AIRemediationResponse {
+  vuln_id: number | null;
+  exploit_id: number | null;
+  guidance: string;
+  model: string;
+  generated_at: string;
+}
+
+export interface AIReviewResponse {
+  action: string;
+  result: string;
+  new_recommendation?: string;
+}
+
+export interface AIChatResponse {
+  question: string;
+  answer: string;
+  model: string;
+}
+
+export const ai = {
+  recommendAttacks(scan_id: number, vuln_id?: number) {
+    return request<AIRecommendationResponse>("/ai/recommend-attacks", {
+      method: "POST",
+      body: JSON.stringify({ scan_id, vuln_id }),
+    });
+  },
+
+  remediate(params: { vuln_id?: number; exploit_id?: number; description?: string }) {
+    return request<AIRemediationResponse>("/ai/remediate", {
+      method: "POST",
+      body: JSON.stringify(params),
+    });
+  },
+
+  review(action: string, scan_id?: number, vuln_id?: number) {
+    const qs = new URLSearchParams();
+    if (scan_id != null) qs.set("scan_id", String(scan_id));
+    if (vuln_id != null) qs.set("vuln_id", String(vuln_id));
+    const query = qs.toString();
+    return request<AIReviewResponse>(`/ai/review${query ? `?${query}` : ""}`, {
+      method: "POST",
+      body: JSON.stringify({ action }),
+    });
+  },
+
+  chat(question: string, vuln_id?: number, exploit_id?: number) {
+    return request<AIChatResponse>("/ai/chat", {
+      method: "POST",
+      body: JSON.stringify({ question, vuln_id, exploit_id }),
+    });
+  },
+};
+
+// Reports ==================================================================
+
+export interface ReportItem {
+  report_id: number;
+  scan_id: number;
+  format: string;
+  generated_by: string;
+  created_at: string;
+}
+
+export interface ReportDetail extends ReportItem {
+  content: string;
+}
+
+export const reports = {
+  generate(scan_id: number, format: string = "html") {
+    return request<ReportItem & { message: string }>("/reports/generate", {
+      method: "POST",
+      body: JSON.stringify({ scan_id, format }),
+    });
+  },
+
+  list() {
+    return request<ReportItem[]>("/reports/");
+  },
+
+  get(reportId: number) {
+    return request<ReportDetail>(`/reports/${reportId}`);
+  },
+
+  downloadUrl(reportId: number) {
+    return `${BASE_URL}/reports/${reportId}/download`;
+  },
+};

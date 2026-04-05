@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.api import auth, users, admin, scan_requests, scans, vulns, exploits
+from app.api import auth, users, admin, scan_requests, scans, vulns, exploits, ai, reports
 from app.core.db import init_db
 
 init_db()
@@ -32,6 +32,8 @@ app.include_router(scan_requests.router,                   tags=["Scan Requests"
 app.include_router(scans.router,                           tags=["Scanning"])
 app.include_router(vulns.router,                           tags=["Vulnerabilities"])
 app.include_router(exploits.router,                        tags=["Exploit Validation"])
+app.include_router(ai.router,                              tags=["AI Engine"])
+app.include_router(reports.router,                         tags=["Reports"])
 
 @app.get("/")
 def root():

@@ -1,131 +1,240 @@
 import { PageShell } from "@/components/PageShell";
 import { Button } from "@/components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { FileBarChart, Download, Plus, Eye, X, Clock, CheckCircle2 } from "lucide-react";
-import { useState } from "react";
+import { FileBarChart, Download, Plus, Eye, Loader2 } from "lucide-react";
+import { useState, useEffect, useCallback } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-
-const reports = [
-  { id: "RPT-001", title: "Weekly Vulnerability Summary", type: "Automated", generated: "2024-12-15", pages: 12, format: "PDF", status: "Ready" },
-  { id: "RPT-002", title: "Penetration Test — DMZ Segment", type: "Manual", generated: "2024-12-14", pages: 34, format: "PDF", status: "Ready" },
-  { id: "RPT-003", title: "Compliance Audit — PCI DSS", type: "Automated", generated: "2024-12-13", pages: 28, format: "PDF", status: "Ready" },
-  { id: "RPT-004", title: "Incident Response Report — FW Breach", type: "Manual", generated: "2024-12-12", pages: 8, format: "DOCX", status: "Ready" },
-  { id: "RPT-005", title: "Monthly Executive Summary", type: "Automated", generated: "2024-12-10", pages: 6, format: "PDF", status: "Generating" },
-];
-
-const previewSections = [
-  { title: "1. Executive Summary", content: "This report provides an overview of the security posture of the Production DMZ network segment (192.168.1.0/24). During the assessment period, 23 vulnerabilities were identified across 6 hosts, including 3 critical findings requiring immediate attention." },
-  { title: "2. Scope & Methodology", content: "The assessment covered all hosts within the 192.168.1.0/24 CIDR range. Testing methodologies included automated vulnerability scanning, manual verification, and proof-of-concept validation using ASHEN's integrated testing framework." },
-  { title: "3. Critical Findings", content: "CVE-2024-21762 (CVSS 9.8) — FortiOS SSL VPN out-of-bound write vulnerability on fw-edge-01. Confirmed exploitable with remote code execution. Immediate patching recommended.\n\nCVE-2024-3400 (CVSS 10.0) — PAN-OS GlobalProtect command injection on pan-gw-02. Active exploitation in the wild. Priority 1 remediation." },
-  { title: "4. Recommendations", content: "1. Immediately patch FortiOS to version 7.4.3 or later\n2. Apply PAN-OS hotfix 10.2.9-h1\n3. Disable Cisco IOS XE web UI on cisco-sw-07\n4. Implement network segmentation for critical infrastructure\n5. Deploy IPS signatures for interim protection" },
-  { title: "5. Appendix — Full Vulnerability List", content: "See attached tables for complete vulnerability inventory with CVSS scores, affected assets, and remediation timelines." },
-];
+import { useToast } from "@/hooks/use-toast";
+import { EmptyState } from "@/components/EmptyState";
+import {
+  scans as scansApi,
+  reports as reportsApi,
+  ScanHistoryItem,
+  ReportItem,
+  ReportDetail,
+  ApiError,
+} from "@/lib/api";
 
 const Reports = () => {
+  const { toast } = useToast();
+
+  // Scan selector for generation
+  const [scanHistory, setScanHistory] = useState<ScanHistoryItem[]>([]);
+  const [selectedScanId, setSelectedScanId] = useState<string>("");
+  const [selectedFormat, setSelectedFormat] = useState<string>("html");
+  const [generating, setGenerating] = useState(false);
+
+  // Report list
+  const [reportList, setReportList] = useState<ReportItem[]>([]);
+  const [listLoading, setListLoading] = useState(false);
+
+  // Preview
   const [previewOpen, setPreviewOpen] = useState(false);
-  const [previewReport, setPreviewReport] = useState(reports[1]);
+  const [previewReport, setPreviewReport] = useState<ReportDetail | null>(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
+
+  const fetchScans = useCallback(async () => {
+    try {
+      const data = await scansApi.history();
+      setScanHistory(data.filter((s) => s.status === "completed"));
+    } catch { /* ignore */ }
+  }, []);
+
+  const fetchReports = useCallback(async () => {
+    setListLoading(true);
+    try {
+      setReportList(await reportsApi.list());
+    } catch { /* ignore */ }
+    finally { setListLoading(false); }
+  }, []);
+
+  useEffect(() => { fetchScans(); fetchReports(); }, [fetchScans, fetchReports]);
+
+  const handleGenerate = async () => {
+    if (!selectedScanId) {
+      toast({ title: "Error", description: "Select a scan first.", variant: "destructive" });
+      return;
+    }
+    setGenerating(true);
+    try {
+      const res = await reportsApi.generate(Number(selectedScanId), selectedFormat);
+      toast({ title: "Report Generated", description: res.message });
+      fetchReports();
+    } catch (e) {
+      const msg = e instanceof ApiError ? e.message : "Failed to generate report";
+      toast({ title: "Error", description: msg, variant: "destructive" });
+    } finally {
+      setGenerating(false);
+    }
+  };
+
+  const handlePreview = async (reportId: number) => {
+    setPreviewLoading(true);
+    setPreviewOpen(true);
+    try {
+      const detail = await reportsApi.get(reportId);
+      setPreviewReport(detail);
+    } catch (e) {
+      const msg = e instanceof ApiError ? e.message : "Failed to load report";
+      toast({ title: "Error", description: msg, variant: "destructive" });
+      setPreviewOpen(false);
+    } finally {
+      setPreviewLoading(false);
+    }
+  };
+
+  const handleDownload = (reportId: number) => {
+    const token = localStorage.getItem("ashen_token");
+    const url = reportsApi.downloadUrl(reportId);
+    // Open in new tab with auth header via fetch + blob
+    fetch(url, { headers: { Authorization: `Bearer ${token ?? ""}` } })
+      .then((res) => res.blob())
+      .then((blob) => {
+        const a = document.createElement("a");
+        a.href = URL.createObjectURL(blob);
+        a.download = `ashen_report_${reportId}.${reportList.find((r) => r.report_id === reportId)?.format ?? "html"}`;
+        a.click();
+        URL.revokeObjectURL(a.href);
+      })
+      .catch(() => toast({ title: "Error", description: "Download failed", variant: "destructive" }));
+  };
 
   return (
     <PageShell title="Reports">
+      {/* Preview Dialog */}
       <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
         <DialogContent className="sm:max-w-3xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <FileBarChart className="h-5 w-5 text-accent" />
-              {previewReport.title}
+              Report Preview {previewReport ? `(RPT-${previewReport.report_id})` : ""}
             </DialogTitle>
           </DialogHeader>
-          <div className="space-y-6 py-4">
-            <div className="flex items-center gap-4 text-xs text-muted-foreground bg-muted rounded-lg p-3">
-              <span>Generated: {previewReport.generated}</span>
-              <span>Pages: {previewReport.pages}</span>
-              <span>Format: {previewReport.format}</span>
-              <span>Type: {previewReport.type}</span>
-            </div>
-            {previewSections.map((s, i) => (
-              <div key={i}>
-                <h3 className="font-semibold mb-2">{s.title}</h3>
-                <p className="text-sm text-muted-foreground whitespace-pre-line">{s.content}</p>
+          {previewLoading ? (
+            <div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
+          ) : previewReport ? (
+            <div className="space-y-4 py-4">
+              <div className="flex items-center gap-4 text-xs text-muted-foreground bg-muted rounded-lg p-3">
+                <span>Scan: SCN-{previewReport.scan_id}</span>
+                <span>Format: {previewReport.format.toUpperCase()}</span>
+                <span>By: {previewReport.generated_by}</span>
+                <span>{new Date(previewReport.created_at).toLocaleString()}</span>
               </div>
-            ))}
-            <div className="flex gap-2 pt-4 border-t border-border">
-              <Button className="gap-2"><Download className="h-4 w-4" /> Download {previewReport.format}</Button>
-              <Button variant="outline" onClick={() => setPreviewOpen(false)}>Close</Button>
+              {previewReport.format === "html" ? (
+                <div
+                  className="border border-border rounded-lg p-4 bg-white text-black"
+                  dangerouslySetInnerHTML={{ __html: previewReport.content }}
+                />
+              ) : (
+                <pre className="bg-foreground/5 rounded-md p-4 text-xs font-mono overflow-x-auto whitespace-pre">
+                  {previewReport.content}
+                </pre>
+              )}
+              <div className="flex gap-2 pt-4 border-t border-border">
+                <Button className="gap-2" onClick={() => handleDownload(previewReport.report_id)}>
+                  <Download className="h-4 w-4" /> Download
+                </Button>
+                <Button variant="outline" onClick={() => setPreviewOpen(false)}>Close</Button>
+              </div>
             </div>
-          </div>
+          ) : null}
         </DialogContent>
       </Dialog>
 
+      {/* Generate section */}
       <div className="flex items-center justify-between mb-6">
-        <p className="text-sm text-muted-foreground">Generate, preview, and download security reports</p>
-        <Button className="gap-2"><Plus className="h-4 w-4" /> Generate Report</Button>
+        <p className="text-sm text-muted-foreground">Generate, preview, and download security reports from real scan data</p>
       </div>
 
-      <div className="grid grid-cols-4 gap-4 mb-6">
+      <div className="flex items-end gap-4 mb-6">
+        <div className="space-y-1 flex-1 max-w-xs">
+          <label className="text-xs font-medium">Scan</label>
+          <Select value={selectedScanId} onValueChange={setSelectedScanId}>
+            <SelectTrigger>
+              <SelectValue placeholder="Select a completed scan..." />
+            </SelectTrigger>
+            <SelectContent>
+              {scanHistory.map((s) => (
+                <SelectItem key={s.scan_id} value={String(s.scan_id)}>
+                  SCN-{s.scan_id} — {s.ip ?? "Unknown"}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-1 w-32">
+          <label className="text-xs font-medium">Format</label>
+          <Select value={selectedFormat} onValueChange={setSelectedFormat}>
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="html">HTML</SelectItem>
+              <SelectItem value="csv">CSV</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <Button className="gap-2" onClick={handleGenerate} disabled={generating}>
+          {generating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+          Generate Report
+        </Button>
+      </div>
+
+      {/* Summary cards */}
+      <div className="grid grid-cols-3 gap-4 mb-6">
         <div className="stat-card text-center">
-          <p className="text-2xl font-bold">{reports.length}</p>
+          <p className="text-2xl font-bold">{reportList.length}</p>
           <p className="text-xs text-muted-foreground">Total Reports</p>
         </div>
         <div className="stat-card text-center">
-          <p className="text-2xl font-bold text-accent">{reports.filter(r => r.type === "Automated").length}</p>
-          <p className="text-xs text-muted-foreground">Automated</p>
+          <p className="text-2xl font-bold text-accent">{reportList.filter((r) => r.format === "html").length}</p>
+          <p className="text-xs text-muted-foreground">HTML</p>
         </div>
         <div className="stat-card text-center">
-          <p className="text-2xl font-bold text-foreground">{reports.filter(r => r.type === "Manual").length}</p>
-          <p className="text-xs text-muted-foreground">Manual</p>
-        </div>
-        <div className="stat-card text-center">
-          <p className="text-2xl font-bold text-warning">{reports.filter(r => r.status === "Generating").length}</p>
-          <p className="text-xs text-muted-foreground">In Progress</p>
+          <p className="text-2xl font-bold text-foreground">{reportList.filter((r) => r.format === "csv").length}</p>
+          <p className="text-xs text-muted-foreground">CSV</p>
         </div>
       </div>
 
-      <div className="bg-card border border-border rounded-lg overflow-hidden">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-border bg-muted/50">
-              {["ID", "Title", "Type", "Generated", "Pages", "Status", "Actions"].map(h => (
-                <th key={h} className="text-left p-3 font-medium">{h}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {reports.map(r => (
-              <tr key={r.id} className="border-b border-border last:border-0 hover:bg-muted/30">
-                <td className="p-3 font-mono text-accent">{r.id}</td>
-                <td className="p-3 font-medium">{r.title}</td>
-                <td className="p-3"><span className="status-badge-info">{r.type}</span></td>
-                <td className="p-3 text-muted-foreground">{r.generated}</td>
-                <td className="p-3 text-muted-foreground">{r.pages} pages</td>
-                <td className="p-3">
-                  {r.status === "Ready" ? (
-                    <span className="status-badge-low"><CheckCircle2 className="h-3 w-3 inline mr-1" />Ready</span>
-                  ) : (
-                    <span className="status-badge-medium"><Clock className="h-3 w-3 inline mr-1 animate-pulse-slow" />Generating</span>
-                  )}
-                </td>
-                <td className="p-3">
-                  <div className="flex gap-1">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="gap-1"
-                      onClick={() => { setPreviewReport(r); setPreviewOpen(true); }}
-                      disabled={r.status !== "Ready"}
-                    >
-                      <Eye className="h-3 w-3" /> Preview
-                    </Button>
-                    <Button variant="ghost" size="sm" className="gap-1" disabled={r.status !== "Ready"}>
-                      <Download className="h-3 w-3" /> {r.format}
-                    </Button>
-                  </div>
-                </td>
+      {/* Report list */}
+      {listLoading ? (
+        <div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
+      ) : reportList.length === 0 ? (
+        <EmptyState message="No reports generated yet. Select a scan and generate one above." />
+      ) : (
+        <div className="bg-card border border-border rounded-lg overflow-hidden">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-border bg-muted/50">
+                {["ID", "Scan", "Format", "Generated By", "Created", "Actions"].map((h) => (
+                  <th key={h} className="text-left p-3 font-medium">{h}</th>
+                ))}
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+            </thead>
+            <tbody>
+              {reportList.map((r) => (
+                <tr key={r.report_id} className="border-b border-border last:border-0 hover:bg-muted/30">
+                  <td className="p-3 font-mono text-accent">RPT-{r.report_id}</td>
+                  <td className="p-3 font-mono">SCN-{r.scan_id}</td>
+                  <td className="p-3"><span className="status-badge-info">{r.format.toUpperCase()}</span></td>
+                  <td className="p-3">{r.generated_by}</td>
+                  <td className="p-3 text-muted-foreground">{new Date(r.created_at).toLocaleString()}</td>
+                  <td className="p-3">
+                    <div className="flex gap-1">
+                      <Button variant="ghost" size="sm" className="gap-1" onClick={() => handlePreview(r.report_id)}>
+                        <Eye className="h-3 w-3" /> Preview
+                      </Button>
+                      <Button variant="ghost" size="sm" className="gap-1" onClick={() => handleDownload(r.report_id)}>
+                        <Download className="h-3 w-3" /> Download
+                      </Button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </PageShell>
   );
 };
