@@ -18,10 +18,13 @@ class TestVulnsAuth:
             f"Issue #2: /vulns/by-scan/1 is PUBLIC (got {resp.status_code}). Should require JWT."
 
     def test_vulns_all_with_auth(self, client, analyst_headers):
-        """Authenticated request should succeed (empty list is fine)."""
+        """Authenticated request should succeed (empty is fine)."""
         resp = client.get("/vulns/all", headers=analyst_headers)
-        # Should return 200 with empty list, not 401/403
         assert resp.status_code == 200
+        data = resp.json()
+        # Now returns paginated response
+        assert "items" in data
+        assert "total" in data
 
     def test_vulns_by_scan_with_auth_not_found(self, client, analyst_headers):
         """Authenticated request for nonexistent scan should return 404."""

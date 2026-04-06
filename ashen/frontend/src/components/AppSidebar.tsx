@@ -2,8 +2,9 @@ import { useLocation, Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { navigationConfig } from "@/config/navigation";
 import { cn } from "@/lib/utils";
-import { ChevronLeft, Shield } from "lucide-react";
+import { ChevronLeft } from "lucide-react";
 import { useState } from "react";
+import ashenIcon from "../../icon/ashen-icon.png";
 
 export function AppSidebar() {
   const { user } = useAuth();
@@ -19,7 +20,11 @@ export function AppSidebar() {
     >
       {/* Logo */}
       <div className="flex items-center gap-3 px-4 h-16 border-b border-sidebar-border shrink-0">
-        <Shield className="h-7 w-7 text-primary shrink-0" />
+        <img
+          src={ashenIcon}
+          alt="ASHEN logo"
+          className="h-7 w-7 shrink-0 object-contain"
+        />
         {!collapsed && (
           <span className="text-lg font-bold tracking-wider text-sidebar-foreground">
             ASHEN

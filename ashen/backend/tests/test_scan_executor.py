@@ -41,3 +41,58 @@ class TestScanExecutor:
         # After fix, it should NOT be a coroutine function
         assert not asyncio.iscoroutinefunction(scan_executor.run_scan_background), \
             "Issue #7: run_scan_background is still async — should be sync for BackgroundTasks"
+
+    def test_update_scan_status_does_not_override_cancelled(self, db):
+        """Cancellation should be terminal: worker updates must not flip it back to running."""
+        from app.services.scan_executor import _update_scan_status
+        from app.models.scan import Scan
+
+        scan = Scan(
+            target_system_id=1,
+            user_id=1,
+            session_id=1,
+            status="cancelled",
+            progress=0,
+            start_time=datetime.utcnow(),
+            end_time=datetime.utcnow(),
+        )
+        db.add(scan)
+        db.commit()
+        db.refresh(scan)
+
+        updated = _update_scan_status(db, scan.scan_id, "running", progress=20)
+        db.refresh(scan)
+
+        assert updated is False
+        assert scan.status == "cancelled"
+        assert scan.progress == 0
+
+    def test_finalize_scan_respects_existing_cancelled(self, db):
+        """Finalization should preserve cancelled if a race occurs during background execution."""
+        from app.services.scan_executor import _finalize_scan
+        from app.models.scan import Scan
+
+        scan = Scan(
+            target_system_id=1,
+            user_id=1,
+            session_id=1,
+            status="cancelled",
+            progress=0,
+            start_time=datetime.utcnow(),
+            end_time=datetime.utcnow(),
+        )
+        db.add(scan)
+        db.commit()
+        db.refresh(scan)
+
+        _finalize_scan(
+            db,
+            scan.scan_id,
+            "failed",
+            None,
+            "Scan was cancelled",
+            "analyst@ashen.dev",
+        )
+        db.refresh(scan)
+
+        assert scan.status == "cancelled"

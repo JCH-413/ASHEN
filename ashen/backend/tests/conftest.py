@@ -5,6 +5,8 @@ Uses an in-memory SQLite database so tests don't touch the real DB.
 import os
 # Force SQLite for tests BEFORE any app imports
 os.environ["DATABASE_URL"] = "sqlite:///./test_ashen.db"
+# Disable CSRF for unit tests (tested separately in test_csrf.py)
+os.environ["CSRF_ENABLED"] = "false"
 
 import pytest
 from fastapi.testclient import TestClient
@@ -33,7 +35,7 @@ def override_get_db():
 def setup_database():
     """Create all tables once before any test runs."""
     # Import all models so they register with Base.metadata
-    from app.models import admin, user, user_session, audit_log, target_system, scan_request, scan, vulnerability
+    from app.models import admin, user, user_session, audit_log, target_system, scan_request, scan, vulnerability, exploit, report
     Base.metadata.create_all(bind=engine)
     yield
     Base.metadata.drop_all(bind=engine)

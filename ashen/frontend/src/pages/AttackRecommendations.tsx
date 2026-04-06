@@ -56,8 +56,8 @@ const AttackRecommendations = () => {
   // Load scan history
   const fetchScans = useCallback(async () => {
     try {
-      const data = await scansApi.history();
-      setScanHistory(data.filter((s) => s.status === "completed"));
+      const res = await scansApi.history(0, 200);
+      setScanHistory(res.items.filter((s) => s.status === "completed"));
     } catch {
       // ignore
     }
