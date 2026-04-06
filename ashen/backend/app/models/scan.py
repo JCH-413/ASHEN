@@ -11,6 +11,8 @@ class Scan(Base):
     user_id = Column(Integer, ForeignKey("user.user_id"))
     session_id = Column(Integer, ForeignKey("user_session.session_id"))
     status = Column(String, default="queued")
+    progress = Column(Integer, default=0)  # 0-100 percentage
+    error_detail = Column(String, nullable=True)  # Safe failure message
     start_time = Column(DateTime, default=datetime.utcnow)
     end_time = Column(DateTime, nullable=True)
     results_json = Column(Text, nullable=True)

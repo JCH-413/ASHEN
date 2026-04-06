@@ -18,6 +18,8 @@ from app.models.target_system import TargetSystem
 from app.models.scan_request import ScanRequest
 from app.models.scan import Scan
 from app.models.vulnerability import Vulnerability
+from app.models.exploit import Exploit
+from app.models.report import Report
 
 config = context.config
 config.set_main_option("sqlalchemy.url", DATABASE_URL)

@@ -40,12 +40,12 @@ const Dashboard = () => {
     setLoading(true);
     try {
       const [scans, vulns, exploits] = await Promise.allSettled([
-        scansApi.history(),
-        vulnsApi.all(),
+        scansApi.history(0, 200),
+        vulnsApi.all({ limit: 200 }),
         exploitsApi.all(),
       ]);
-      if (scans.status === "fulfilled") setScanHistory(scans.value);
-      if (vulns.status === "fulfilled") setAllVulns(vulns.value);
+      if (scans.status === "fulfilled") setScanHistory(scans.value.items);
+      if (vulns.status === "fulfilled") setAllVulns(vulns.value.items);
       if (exploits.status === "fulfilled") setAllExploits(exploits.value);
     } finally {
       setLoading(false);

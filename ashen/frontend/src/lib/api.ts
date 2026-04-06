@@ -3,7 +3,10 @@
 // - Handles 401 by clearing session and redirecting to /login
 // - Typed wrappers for every backend endpoint
 
-const BASE_URL = "http://localhost:8000";
+const API_BASE_FROM_ENV = (import.meta as ImportMeta & { env?: Record<string, string> }).env?.VITE_API_BASE_URL;
+const BASE_URL = API_BASE_FROM_ENV || (import.meta.env.DEV
+  ? "/api"
+  : `${window.location.protocol}//${window.location.hostname}:8000`);
 
 // ── Helpers ──────────────────────────────────────────────────────────
 
@@ -24,6 +27,7 @@ async function request<T>(
 ): Promise<T> {
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
+    "X-CSRF-Token": "1",
     ...authHeaders(),
     ...(options.headers as Record<string, string> | undefined),
   };
@@ -71,9 +75,11 @@ export interface ScanHistoryItem {
 export interface ScanStatus {
   scan_id: number;
   status: string;
+  progress: number;
   start_time: string | null;
   end_time: string | null;
   results_json: string | null;
+  error_detail: string | null;
 }
 
 export interface Vulnerability {
@@ -83,7 +89,15 @@ export interface Vulnerability {
   script_id: string;
   severity: string;
   description: string;
+  raw_output?: string;
   timestamp: string;
+}
+
+export interface PaginatedResponse<T> {
+  items: T[];
+  total: number;
+  skip: number;
+  limit: number;
 }
 
 export interface ExploitResult {
@@ -212,8 +226,10 @@ export const scans = {
     return request<ScanStatus>(`/scan/status/${scanId}`);
   },
 
-  history() {
-    return request<ScanHistoryItem[]>("/scan/history");
+  history(skip = 0, limit = 50) {
+    return request<PaginatedResponse<ScanHistoryItem>>(
+      `/scan/history?skip=${skip}&limit=${limit}`
+    );
   },
 
   requestScan(ip_address: string, reason: string) {
@@ -221,6 +237,13 @@ export const scans = {
       method: "POST",
       body: JSON.stringify({ ip_address, reason }),
     });
+  },
+
+  cancel(scanId: number) {
+    return request<{ scan_id: number; status: string; message: string }>(
+      `/scan/cancel/${scanId}`,
+      { method: "POST" }
+    );
   },
 };
 
@@ -231,8 +254,23 @@ export const vulns = {
     return request<Vulnerability[]>(`/vulns/by-scan/${scanId}`);
   },
 
-  all() {
-    return request<Vulnerability[]>("/vulns/all");
+  all(params?: {
+    scan_id?: number;
+    severity?: string;
+    port?: number;
+    skip?: number;
+    limit?: number;
+  }) {
+    const qs = new URLSearchParams();
+    if (params?.scan_id != null) qs.set("scan_id", String(params.scan_id));
+    if (params?.severity) qs.set("severity", params.severity);
+    if (params?.port != null) qs.set("port", String(params.port));
+    if (params?.skip != null) qs.set("skip", String(params.skip));
+    if (params?.limit != null) qs.set("limit", String(params.limit));
+    const query = qs.toString();
+    return request<PaginatedResponse<Vulnerability>>(
+      `/vulns/all${query ? `?${query}` : ""}`
+    );
   },
 };
 
@@ -267,6 +305,10 @@ export const exploits = {
 
   all() {
     return request<ExploitListItem[]>("/exploit/all");
+  },
+
+  types() {
+    return request<{ exploit_types: { key: string; tool: string }[] }>("/exploit/types");
   },
 };
 
@@ -337,6 +379,7 @@ async function streamSSE(
 ): Promise<string> {
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
+    "X-CSRF-Token": "1",
     ...authHeaders(),
   };
 

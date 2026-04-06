@@ -54,11 +54,12 @@ class TestScanHistory:
 
     def test_scan_history_filtered_by_user(self, client, analyst_headers, auth_headers):
         """Issue #12: Scan history should only show current user's scans, not all."""
-        # Get scans as analyst
         resp_analyst = client.get("/scan/history", headers=analyst_headers)
-        # Get scans as admin — admins might see all, but analysts shouldn't see admin scans
-        # This test documents the current behavior
         assert resp_analyst.status_code == 200
+        data = resp_analyst.json()
+        # Now returns paginated response
+        assert "items" in data
+        assert "total" in data
 
 
 class TestScanRequest:

@@ -46,14 +46,14 @@ const DataLogs = () => {
   const [scanHistory, setScanHistory] = useState<ScanHistoryItem[]>([]);
 
   const fetchScans = useCallback(async () => {
-    try { setScanHistory(await scansApi.history()); } catch { /* silent */ }
+    try { const res = await scansApi.history(0, 200); setScanHistory(res.items); } catch { /* silent */ }
   }, []);
 
   // ── Vulnerabilities ──────────────────────────────────────────────
   const [allVulns, setAllVulns] = useState<Vulnerability[]>([]);
 
   const fetchVulns = useCallback(async () => {
-    try { setAllVulns(await vulnsApi.all()); } catch { setAllVulns([]); }
+    try { const res = await vulnsApi.all({ limit: 200 }); setAllVulns(res.items); } catch { setAllVulns([]); }
   }, []);
 
   // ── Exploit logs ─────────────────────────────────────────────────

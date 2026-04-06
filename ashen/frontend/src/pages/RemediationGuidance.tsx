@@ -61,8 +61,8 @@ const RemediationGuidance = () => {
   // Load dropdown data
   const fetchData = useCallback(async () => {
     try {
-      const [v, e] = await Promise.allSettled([vulnsApi.all(), exploitsApi.all()]);
-      if (v.status === "fulfilled") setAllVulns(v.value);
+      const [v, e] = await Promise.allSettled([vulnsApi.all({ limit: 200 }), exploitsApi.all()]);
+      if (v.status === "fulfilled") setAllVulns(v.value.items);
       if (e.status === "fulfilled") setAllExploits(e.value);
     } catch {
       // ignore
