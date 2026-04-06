@@ -11,7 +11,7 @@ class AIServiceUnavailableError(Exception):
 class OllamaClient:
     def __init__(self):
         self.url = os.getenv("OLLAMA_URL", "http://localhost:11434/api/generate")
-        self.model = os.getenv("OLLAMA_MODEL", "tinyllama")
+        self.model = os.getenv("OLLAMA_MODEL", "llama3.2")
 
     def generate(self, prompt):
         try:

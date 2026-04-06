@@ -29,6 +29,10 @@ from app.schemas.ai_schema import (
 router = APIRouter(prefix="/ai", tags=["AI Engine"])
 
 
+def _active_model_name() -> str:
+    return OllamaClient().model
+
+
 def _build_vuln_context(db: Session, scan_id: int, vuln_id: int = None) -> str:
     """Build a text context from scan/vuln data for the AI prompt."""
     parts = []
@@ -51,7 +55,7 @@ def _build_vuln_context(db: Session, scan_id: int, vuln_id: int = None) -> str:
 
 def _build_rich_remediation_context(db: Session, vuln_id=None, exploit_id=None, description=None) -> str:
     """Build concise context for remediation — enough for the LLM to reason,
-    short enough that tinyllama doesn't echo it back."""
+    short enough that smaller models do not echo it back."""
     parts = []
 
     vuln = None
@@ -163,7 +167,7 @@ def ai_recommend_attacks(
         "scan_id": body.scan_id,
         "vuln_id": body.vuln_id,
         "recommendation": response,
-        "model": "tinyllama",
+        "model": _active_model_name(),
         "generated_at": datetime.utcnow().isoformat(),
     }
 
@@ -232,7 +236,7 @@ def ai_remediate(
         "vuln_id": body.vuln_id,
         "exploit_id": body.exploit_id,
         "guidance": response,
-        "model": "tinyllama",
+        "model": _active_model_name(),
         "generated_at": datetime.utcnow().isoformat(),
     }
 
@@ -397,5 +401,5 @@ def ai_chat(
     return {
         "question": body.question,
         "answer": response,
-        "model": "tinyllama",
+        "model": _active_model_name(),
     }

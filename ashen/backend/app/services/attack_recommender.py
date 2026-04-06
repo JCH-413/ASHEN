@@ -2,6 +2,7 @@ from typing import Generator
 
 from .ollama_client import AIServiceUnavailableError, OllamaClient
 from .prompt_templates import build_attack_prompt
+from .rag_store import retrieve_relevant_cves
 from .safety_filter import filter_attack_response
 
 client = OllamaClient()
@@ -13,7 +14,9 @@ def recommend_attacks(data):
         return "No input provided"
 
     try:
-        prompt = build_attack_prompt(data)
+        cve_context = retrieve_relevant_cves(data)
+        enriched_data = f"{data}\n\nRelevant CVE context:\n{cve_context}" if cve_context else data
+        prompt = build_attack_prompt(enriched_data)
         response = client.generate(prompt)
 
         if not response:
@@ -29,7 +32,9 @@ def recommend_attacks(data):
 
 def stream_attack_recommendation(data) -> Generator[str, None, None]:
     """Yield attack recommendation tokens as they arrive from the LLM."""
-    prompt = build_attack_prompt(data)
+    cve_context = retrieve_relevant_cves(data)
+    enriched_data = f"{data}\n\nRelevant CVE context:\n{cve_context}" if cve_context else data
+    prompt = build_attack_prompt(enriched_data)
     # The prompt ends with "1." to prime the model — prepend it so the
     # streamed output starts with the full first step
     yield "Exploitation Order:\n\n1."
