@@ -1,0 +1,285 @@
+{
+  "generated": "2026-06-15T07:37:43.045287+00:00",
+  "targets": [
+    {
+      "ip": "192.168.28.130",
+      "name": "metasploitable2",
+      "relevant": [
+        "ftp_brute_force",
+        "ssh_brute_force"
+      ],
+      "oracle": {
+        "ftp_brute_force": {
+          "exploit_type": "ftp_brute_force",
+          "tool": "(assumed)",
+          "port": 21,
+          "ran": true,
+          "vulnerable": true,
+          "summary": "assumed from config (--no-exploit)"
+        },
+        "ssh_brute_force": {
+          "exploit_type": "ssh_brute_force",
+          "tool": "(assumed)",
+          "port": 22,
+          "ran": true,
+          "vulnerable": true,
+          "summary": "assumed from config (--no-exploit)"
+        },
+        "ms17_010_check": {
+          "exploit_type": "ms17_010_check",
+          "tool": "(assumed)",
+          "port": 445,
+          "ran": true,
+          "vulnerable": false,
+          "summary": "assumed from config (--no-exploit)"
+        },
+        "shellshock_cgi": {
+          "exploit_type": "shellshock_cgi",
+          "tool": "(assumed)",
+          "port": 80,
+          "ran": true,
+          "vulnerable": false,
+          "summary": "assumed from config (--no-exploit)"
+        }
+      },
+      "valid_cves": [
+        "CVE-2011-2523",
+        "CVE-2008-0166",
+        "CVE-2007-2447",
+        "CVE-2011-3192"
+      ],
+      "conditions": [
+        {
+          "condition": "off",
+          "ranked": [
+            "ftp_brute_force",
+            "ssh_brute_force",
+            "shellshock_cgi",
+            "ms17_010_check"
+          ],
+          "cited_cves": [],
+          "precision_at_1": 1.0,
+          "reciprocal_rank": 1.0,
+          "fabrication_rate": null,
+          "recommendation": "Exploitation Order:\n\n1.Based on the provided scan results and available exploits, here are the matches ordered by priority:\n\n1. 1, Port 21, ftp_brute_force, Severity: high - vsftpd 2.3.4, weak/default credentials\n2. 1, Port 22, ssh_brute_force, Severity: high - OpenSSH 4.7p1 Debian, weak/default credentials\n3. 2, Port 80, shellshock_cgi, Severity: medium - Apache httpd 2.2.8 (Ubuntu) DAV/2, possible CGI\n4. 2, Port 139, ms17_010_check, Severity: medium - Samba smbd 3.x\n5. 2, Port 445, ms17_010_check, Severity: medium - Samba smbd 3.x (SMB)\n\nNote that the same exploit can be used for multiple ports if they have the same vulnerability and severity. In this case, 'ms17_010_check' is used for both port 139 and port 445 as they are related to the same vulnerability."
+        },
+        {
+          "condition": "plain",
+          "ranked": [
+            "ms17_010_check",
+            "shellshock_cgi"
+          ],
+          "cited_cves": [
+            "CVE-2007-2447",
+            "CVE-2017-7494",
+            "CVE-2017-0144",
+            "CVE-2011-2523",
+            "CVE-2015-0240"
+          ],
+          "precision_at_1": 0.0,
+          "reciprocal_rank": 0.0,
+          "fabrication_rate": 0.6,
+          "recommendation": "Exploitation Order:\n\n1.Here are the exploits that match open ports, ordered by priority:\n\n1. Critical - Port 445 | netbios-ssn | ms17_010_check | Affects Windows hosts only; not Linux Samba.\n2. Critical - Port 139 | netbios-ssn | CVE-2007-2447 | Samba 3.0.x: Samba 3.0.0 through 3.0.25rc3 'username map script' command injection allows unauthenticated remote command execution via shell metacharacters in the username.\n3. Critical - Port 445 | netbios-ssn | CVE-2017-7494 | SambaCry: Samba 3.5.0 through 4.x allows a writable-share client to upload and load a shared library, achieving remote code execution on Linux Samba servers.\n4. Critical - Port 22 | ssh-openssh | CVE-2017-0144 | Microsoft Windows SMBv1: EternalBlue (MS17-010): a remote code execution flaw in Microsoft Windows SMBv1.\n5. High - Port 21 | ftp-vsftpd | CVE-2011-2523 | vsftpd 2.3.4 contains a backdoor: a username ending in ':)' opens a command shell on TCP 6200, allowing unauthenticated remote command execution.\n6. Medium - Port 80 | http-apache | shellshock_cgi | Apache httpd 2.2.8 (Ubuntu) DAV/2, possible CGI\n7. Medium - Port 139 | netbios-ssn | CVE-2015-0240 | Samba 3.5: Uninitialized pointer in the Samba smbd netlogon server (3.5.x-4.x) allows unauthenticated remote code execution.\n8. Medium - Port 445 | netbios-ssn | CVE-2007-2447 | Samba 3.0.x: Samba 3.0.0 through 3.0.25rc3 'username map script' command injection allows unauthenticated remote command execution via shell metacharacters in the username.\n\nNote that I've excluded Port 22 from the list because it's not a direct match for the available exploit types, and instead used the relevant CVE-2017-0144 exploit."
+        },
+        {
+          "condition": "action_aware",
+          "ranked": [
+            "ssh_brute_force",
+            "ftp_brute_force",
+            "ms17_010_check"
+          ],
+          "cited_cves": [
+            "CVE-2017-0144"
+          ],
+          "precision_at_1": 1.0,
+          "reciprocal_rank": 1.0,
+          "fabrication_rate": 1.0,
+          "recommendation": "Exploitation Order:\n\n1.Based on the scan findings, I recommend the following exploits:\n\n1. 1, 22, ssh_brute_force, Weak default credentials for OpenSSH 4.7p1 Debian service.\n2. 1, 21, ftp_brute_force, Weak default credentials for vsftpd 2.3.4 service.\n3. 1, 445, ms17_010_check, Vulnerability CVE-2017-0144 in Samba smbd 3.x service.\n\nThese exploits are recommended because they target services with confirmed weaknesses and vulnerabilities as identified by the scan findings."
+        }
+      ],
+      "remediations": []
+    },
+    {
+      "ip": "192.168.28.133",
+      "name": "shellshock-ubuntu1404",
+      "relevant": [
+        "shellshock_cgi"
+      ],
+      "oracle": {
+        "shellshock_cgi": {
+          "exploit_type": "shellshock_cgi",
+          "tool": "(assumed)",
+          "port": 80,
+          "ran": true,
+          "vulnerable": true,
+          "summary": "assumed from config (--no-exploit)"
+        },
+        "ssh_brute_force": {
+          "exploit_type": "ssh_brute_force",
+          "tool": "(assumed)",
+          "port": 22,
+          "ran": true,
+          "vulnerable": false,
+          "summary": "assumed from config (--no-exploit)"
+        },
+        "ftp_brute_force": {
+          "exploit_type": "ftp_brute_force",
+          "tool": "(assumed)",
+          "port": 21,
+          "ran": true,
+          "vulnerable": false,
+          "summary": "assumed from config (--no-exploit)"
+        },
+        "ms17_010_check": {
+          "exploit_type": "ms17_010_check",
+          "tool": "(assumed)",
+          "port": 445,
+          "ran": true,
+          "vulnerable": false,
+          "summary": "assumed from config (--no-exploit)"
+        }
+      },
+      "valid_cves": [
+        "CVE-2014-6271",
+        "CVE-2014-7169"
+      ],
+      "conditions": [
+        {
+          "condition": "off",
+          "ranked": [
+            "shellshock_cgi"
+          ],
+          "cited_cves": [],
+          "precision_at_1": 1.0,
+          "reciprocal_rank": 1.0,
+          "fabrication_rate": null,
+          "recommendation": "Exploitation Order:\n\n1.Based on the provided information, here are the exploits that match open ports, ordered by priority:\n\n1. Critical (Severity: critical)\nPort 80 | http-apache | Apache 2.4.7 (Ubuntu) mod_cgi, Shellshock-vulnerable bash via /cgi-bin/vulnerable | This exploit is critical due to the presence of a vulnerable Apache installation and the potential for shellshock attacks.\n\n2. Medium (Severity: medium)\nPort 22 | ssh | OpenSSH | This exploit is medium in priority because it targets an open SSH port, but the severity is lower compared to the critical exploit found on port 80.\n\nNote that there are no other exploits that match open ports with a higher or equal priority than these two."
+        },
+        {
+          "condition": "plain",
+          "ranked": [
+            "shellshock_cgi"
+          ],
+          "cited_cves": [
+            "CVE-2014-7169",
+            "CVE-2014-6271",
+            "CVE-2021-41773",
+            "CVE-2008-0166",
+            "CVE-2006-5051"
+          ],
+          "precision_at_1": 1.0,
+          "reciprocal_rank": 1.0,
+          "fabrication_rate": 0.6,
+          "recommendation": "Exploitation Order:\n\n1.Here are the exploits that match open ports, ordered by priority:\n\n1. Critical - Port 80 | http-apache | Apache 2.4.7 (Ubuntu) mod_cgi, Shellshock-vulnerable bash via /cgi-bin/vulnerable\n   Why: CVE-2014-7169, a critical vulnerability in Apache's CGI handling allows attackers to execute arbitrary commands.\n\n2. Critical - Port 80 | http-apache | Severity: critical | Apache 2.4.7 (Ubuntu) mod_cgi, Shellshock-vulnerable bash via /cgi-bin/vulnerable\n   Why: CVE-2014-6271, a critical vulnerability in Apache's CGI handling allows attackers to execute arbitrary commands.\n\n3. Critical - Port 80 | http-apache | Severity: critical | Apache 2.4.49: Path traversal and remote code execution in Apache httpd 2.4.49 via crafted '..%2e' sequences when mod_cgi is enabled.\n   Why: CVE-2021-41773, a critical vulnerability in Apache's CGI handling allows attackers to execute arbitrary commands.\n\n4. Critical - Port 22 | ssh | Severity: low | OpenSSH\n   Why: CVE-2008-0166, a critical vulnerability in OpenSSH's host key generation allows attackers to brute-force the key.\n\n5. High - Port 80 | http-apache | Severity: high | OpenSSH 4.x: Signal handler race condition in OpenSSH before 4.4 may allow remote code execution or denial of service.\n   Why: CVE-2006-5051, a high-severity vulnerability in OpenSSH's signal handling allows attackers to execute arbitrary commands.\n\nNote that the severity of the vulnerabilities is based on the provided CVE context and may not reflect the actual severity of the exploit."
+        },
+        {
+          "condition": "action_aware",
+          "ranked": [
+            "shellshock_cgi",
+            "ssh_brute_force"
+          ],
+          "cited_cves": [
+            "CVE-2014-6271",
+            "CVE-2014-7169",
+            "CVE-2021-41773",
+            "CVE-2008-0166"
+          ],
+          "precision_at_1": 1.0,
+          "reciprocal_rank": 1.0,
+          "fabrication_rate": 0.5,
+          "recommendation": "Exploitation Order:\n\n1.Based on the scan findings, I recommend the following exploit types:\n\n1. Port 80, shellshock_cgi, because Apache 2.4.7 (Ubuntu) mod_cgi is vulnerable to CVE-2014-6271, CVE-2014-7169, and CVE-2021-41773.\n\n2. Port 22, ssh_brute_force, because OpenSSH on the target system has a known vulnerability (CVE-2008-0166) that can be exploited using this type of exploit."
+        }
+      ],
+      "remediations": []
+    },
+    {
+      "ip": "192.168.28.132",
+      "name": "metasploitable3-win2k8",
+      "relevant": [
+        "ms17_010_check"
+      ],
+      "oracle": {
+        "ms17_010_check": {
+          "exploit_type": "ms17_010_check",
+          "tool": "(assumed)",
+          "port": 445,
+          "ran": true,
+          "vulnerable": true,
+          "summary": "assumed from config (--no-exploit)"
+        },
+        "ftp_brute_force": {
+          "exploit_type": "ftp_brute_force",
+          "tool": "(assumed)",
+          "port": 21,
+          "ran": true,
+          "vulnerable": false,
+          "summary": "assumed from config (--no-exploit)"
+        },
+        "ssh_brute_force": {
+          "exploit_type": "ssh_brute_force",
+          "tool": "(assumed)",
+          "port": 22,
+          "ran": true,
+          "vulnerable": false,
+          "summary": "assumed from config (--no-exploit)"
+        },
+        "shellshock_cgi": {
+          "exploit_type": "shellshock_cgi",
+          "tool": "(assumed)",
+          "port": 80,
+          "ran": true,
+          "vulnerable": false,
+          "summary": "assumed from config (--no-exploit)"
+        }
+      },
+      "valid_cves": [
+        "CVE-2017-0143",
+        "CVE-2017-0144",
+        "CVE-2017-0145"
+      ],
+      "conditions": [
+        {
+          "condition": "off",
+          "ranked": [
+            "ms17_010_check",
+            "ssh_brute_force",
+            "ftp_brute_force"
+          ],
+          "cited_cves": [],
+          "precision_at_1": 1.0,
+          "reciprocal_rank": 1.0,
+          "fabrication_rate": null,
+          "recommendation": "Exploitation Order:\n\n1.Based on the provided information, here are the exploits that match open ports, ordered by priority:\n\n1. 3, 445, ms17_010_check, Windows Server 2008 R2 SMBv1, MS17-010 candidate\n2. 1, 139, ssh_brute_force, Windows netbios-ssn\n3. 2, 22, ftp_brute_force, OpenSSH 7.1\n4. 0, 21, ftp_brute_force, Microsoft ftpd"
+        },
+        {
+          "condition": "plain",
+          "ranked": [
+            "ms17_010_check",
+            "ssh_brute_force",
+            "ftp_brute_force"
+          ],
+          "cited_cves": [],
+          "precision_at_1": 1.0,
+          "reciprocal_rank": 1.0,
+          "fabrication_rate": null,
+          "recommendation": "Exploitation Order:\n\n1.Here are the exploits that match open ports, ordered by priority:\n\n1. Critical - Port 445 | microsoft-ds | ms17_010_check | Windows Server 2008 R2 SMBv1, MS17-010 candidate\n2. Critical - Port 445 | microsoft-ds | EternalBlue (MS17-010) | Windows Server 2008 R2 SMBv1, MS17-010 candidate\n3. High - Port 139 | netbios-ssn | ms17_010_check | Windows netbios-ssn\n4. Medium - Port 21 | ftp | ssh_brute_force | Microsoft ftpd\n5. Medium - Port 22 | ssh-openssh | ssh_brute_force | OpenSSH 7.1\n6. Medium - Port 80 | http-iis | ftp_brute_force | Microsoft IIS httpd 7.5"
+        },
+        {
+          "condition": "action_aware",
+          "ranked": [
+            "ms17_010_check",
+            "ssh_brute_force",
+            "ftp_brute_force",
+            "shellshock_cgi"
+          ],
+          "cited_cves": [],
+          "precision_at_1": 1.0,
+          "reciprocal_rank": 1.0,
+          "fabrication_rate": null,
+          "recommendation": "Exploitation Order:\n\n1.Based on the scan findings, I recommend the following exploits:\n\n1. 1, 445, ms17_010_check, This is a critical vulnerability in Windows Server 2008 R2 SMBv1, which has a high severity rating and should be addressed first.\n\n2. 22, ssh_brute_force, This exploit targets OpenSSH 7.1, which has a medium severity rating and can be used to gain unauthorized access to the system.\n\n3. 21, ftp_brute_force, This is a weak service with medium severity, and brute-force attacks can be effective against it.\n\n4. 80, shellshock_cgi, This is another weak service with medium severity, and exploiting its CGI vulnerability can provide additional access to the system.\n\nNote: I have not recommended the ms17_010_check exploit for port 445 as it's already critical and should be addressed first."
+        }
+      ],
+      "remediations": []
+    }
+  ]
+}

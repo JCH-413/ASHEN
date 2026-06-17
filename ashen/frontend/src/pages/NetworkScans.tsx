@@ -4,13 +4,16 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef, Fragment } from "react";
 import { Play, Terminal, AlertTriangle, Loader2, RefreshCw, Send, Crosshair, XCircle, ChevronLeft, ChevronRight, ChevronDown, ChevronUp } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { EthicalDisclaimer } from "@/components/EthicalDisclaimer";
 import { EmptyState } from "@/components/EmptyState";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useNavigate } from "react-router-dom";
+import { remediationStore } from "@/lib/remediation-store";
+import { ExploitResultPanel } from "@/components/ExploitResultPanel";
 import {
   scans as scansApi,
   vulns as vulnsApi,
@@ -18,6 +21,9 @@ import {
   ScanHistoryItem,
   ScanStatus,
   Vulnerability,
+  ExploitResult,
+  ExploitListItem,
+  AuthorizedTarget,
   ApiError,
 } from "@/lib/api";
 
@@ -36,6 +42,19 @@ function validateIp(value: string): string | null {
   if (ipv6.test(v)) return null;
   if (v === "::1") return null;
   return "Invalid IP address. Enter a valid IPv4 or IPv6 address.";
+}
+
+/** Human-readable phase for the coarse progress markers emitted by the scan
+ *  executor (10 init → 20 nmap start → 70 parsing → 100 done). */
+function scanPhaseLabel(status: string, progress: number): string {
+  if (status === "failed") return "Scan failed";
+  if (status === "cancelled") return "Scan cancelled";
+  if (status === "completed" || status === "completed_with_errors" || progress >= 100)
+    return "Complete";
+  if (status === "queued") return "Queued — waiting to start";
+  if (progress >= 70) return `Parsing results — ${progress}%`;
+  if (progress >= 20) return `Scanning ports & services — ${progress}%`;
+  return `Initializing scan — ${progress}%`;
 }
 
 const statusColor = (s: string) =>
@@ -92,6 +111,11 @@ const NetworkScans = () => {
   // ── New Scan tab state ────────────────────────────────────────────
   const [targetIp, setTargetIp] = useState("");
   const [ipError, setIpError] = useState<string | null>(null);
+  const [authTargets, setAuthTargets] = useState<AuthorizedTarget[]>([]);
+
+  useEffect(() => {
+    scansApi.authorizedTargets().then(setAuthTargets).catch(() => setAuthTargets([]));
+  }, []);
   const [showDisclaimer, setShowDisclaimer] = useState(false);
   const [scanStarting, setScanStarting] = useState(false);
 
@@ -262,6 +286,7 @@ const NetworkScans = () => {
   // ── Results ───────────────────────────────────────────────────────
   const [selectedScan, setSelectedScan] = useState<ScanStatus | null>(null);
   const [resultsLoading, setResultsLoading] = useState(false);
+  const [reExtracting, setReExtracting] = useState(false);
 
   const viewScanResults = async (scanId: number) => {
     setResultsLoading(true);
@@ -274,6 +299,58 @@ const NetworkScans = () => {
       toast({ title: "Error", description: msg, variant: "destructive" });
     } finally {
       setResultsLoading(false);
+    }
+  };
+
+  // Results tab defaults to the latest completed scan instead of an empty state.
+  const autoSelectedRef = useRef(false);
+  useEffect(() => {
+    if (activeTab !== "results" || selectedScan != null || autoSelectedRef.current) return;
+    if (scanHistory.length === 0) return;
+    const latest =
+      scanHistory.find((s) => ["completed", "completed_with_errors"].includes(s.status)) ??
+      scanHistory[0];
+    autoSelectedRef.current = true;
+    viewScanResults(latest.scan_id);
+  }, [activeTab, selectedScan, scanHistory]);
+
+  const handleReExtract = async () => {
+    if (selectedScan == null) return;
+    setReExtracting(true);
+    try {
+      const res = await scansApi.reExtract(selectedScan.scan_id);
+      toast({
+        title: "Vulnerabilities Re-extracted",
+        description: `SCN-${selectedScan.scan_id}: ${res.vulnerabilities} vulnerabilit${res.vulnerabilities === 1 ? "y" : "ies"} from stored results.`,
+      });
+      await viewScanResults(selectedScan.scan_id); // refresh status + results
+      fetchVulns(vulnsPage); // refresh the vulnerabilities list
+    } catch (e) {
+      const msg = e instanceof ApiError ? e.message : "Failed to re-extract vulnerabilities";
+      toast({ title: "Error", description: msg, variant: "destructive" });
+    } finally {
+      setReExtracting(false);
+    }
+  };
+
+  // Re-run a finished/failed scan against the same target (no re-typing the IP).
+  const [reRunning, setReRunning] = useState(false);
+  const handleReRunScan = async () => {
+    if (!selectedScan?.target_ip) return;
+    setReRunning(true);
+    try {
+      const res = await scansApi.start(selectedScan.target_ip, true);
+      toast({ title: "Scan Queued", description: res.message });
+      setActiveScanId(res.scan_id);
+      setActiveScanStatus(null);
+      setPollError(null);
+      setActiveTab("monitor");
+      fetchHistory();
+    } catch (e) {
+      const msg = e instanceof ApiError ? e.message : "Failed to start scan";
+      toast({ title: "Scan Failed", description: msg, variant: "destructive" });
+    } finally {
+      setReRunning(false);
     }
   };
 
@@ -294,23 +371,58 @@ const NetworkScans = () => {
   })();
 
   // ── Exploit execution ─────────────────────────────────────────────
-  const [exploitTypes, setExploitTypes] = useState<{ key: string; tool: string }[]>([]);
+  const [exploitTypes, setExploitTypes] = useState<{ key: string; tool: string; port: number; service: string }[]>([]);
   const [exploitVuln, setExploitVuln] = useState<Vulnerability | null>(null);
   const [exploitType, setExploitType] = useState("");
   const [exploitTargetIp, setExploitTargetIp] = useState("");
   const [exploitIpError, setExploitIpError] = useState<string | null>(null);
   const [showExploitDisclaimer, setShowExploitDisclaimer] = useState(false);
   const [exploitRunning, setExploitRunning] = useState(false);
+  const [exploitPollingId, setExploitPollingId] = useState<number | null>(null);
+  const navigate = useNavigate();
+
+  // Persistent exploit history (Exploits tab). Rows expand to show their full
+  // result (fetched + cached on first expand), mirroring the vulnerability rows.
+  const [exploitsList, setExploitsList] = useState<ExploitListItem[]>([]);
+  const [exploitsLoading, setExploitsLoading] = useState(false);
+  const [expandedExploit, setExpandedExploit] = useState<number | null>(null);
+  const [exploitResults, setExploitResults] = useState<Record<number, ExploitResult>>({});
+
+  const fetchExploits = useCallback(async () => {
+    setExploitsLoading(true);
+    try {
+      setExploitsList(await exploitsApi.all());
+    } catch {
+      // non-fatal; table just stays as-is
+    } finally {
+      setExploitsLoading(false);
+    }
+  }, []);
+  useEffect(() => { fetchExploits(); }, [fetchExploits]);
+
+  const toggleExploitRow = async (id: number) => {
+    if (expandedExploit === id) { setExpandedExploit(null); return; }
+    setExpandedExploit(id);
+    if (!exploitResults[id]) {
+      try {
+        const r = await exploitsApi.results(id);
+        setExploitResults((m) => ({ ...m, [id]: r }));
+      } catch (e) {
+        const msg = e instanceof ApiError ? e.message : "Could not load exploit result";
+        toast({ title: "Error", description: msg, variant: "destructive" });
+      }
+    }
+  };
 
   // Fetch exploit types from backend on mount
   useEffect(() => {
     exploitsApi.types().then((res) => setExploitTypes(res.exploit_types)).catch(() => {
       // Fallback to hardcoded if endpoint unavailable
       setExploitTypes([
-        { key: "ssh_brute_force", tool: "metasploit" },
-        { key: "ftp_brute_force", tool: "hydra" },
-        { key: "ms17_010_check", tool: "metasploit" },
-        { key: "shellshock_cgi", tool: "curl" },
+        { key: "ssh_brute_force", tool: "metasploit", port: 22, service: "ssh" },
+        { key: "ftp_brute_force", tool: "hydra", port: 21, service: "ftp" },
+        { key: "ms17_010_check", tool: "metasploit", port: 445, service: "smb" },
+        { key: "shellshock_cgi", tool: "curl", port: 80, service: "http" },
       ]);
     });
   }, []);
@@ -318,14 +430,22 @@ const NetworkScans = () => {
   const exploitLabel = (key: string) =>
     key.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 
+  // ASHEN's exploits are service/port-based: an exploit applies to a vuln only
+  // if it targets that vuln's port. Empty => detection-only finding (no ASHEN
+  // exploit), so we don't offer one.
+  const applicableTypes = (vuln: Vulnerability) =>
+    exploitTypes.filter((t) => t.port === vuln.port);
+
   const handleExploitClick = (vuln: Vulnerability) => {
     setExploitVuln(vuln);
-    setExploitType("");
+    const matches = applicableTypes(vuln);
+    setExploitType(matches.length === 1 ? matches[0].key : "");
     setExploitIpError(null);
     const scan = scanHistory.find((s) => s.scan_id === vuln.scan_id);
     const ip = scan?.ip ?? "";
     setExploitTargetIp(ip);
     if (!ip) setExploitIpError("Could not resolve target IP from scan. Enter it manually.");
+    setActiveTab("exploits");  // exploitation happens on the Exploits tab
   };
 
   const handleExploitTargetIpChange = (value: string) => {
@@ -343,6 +463,55 @@ const NetworkScans = () => {
     setShowExploitDisclaimer(true);
   };
 
+  const pollExploitCompletion = useCallback(async (exploitId: number, attempt = 0) => {
+    try {
+      const res = await exploitsApi.results(exploitId);
+      if (["pending", "running"].includes(res.status)) {
+        if (attempt < 120) {
+          setTimeout(() => { pollExploitCompletion(exploitId, attempt + 1); }, 3000);
+        } else {
+          setExploitPollingId(null);
+          toast({
+            title: "Exploit Status Timeout",
+            description: `Exploit EXP-${exploitId} is still in progress. Please check results later.`,
+            variant: "destructive",
+          });
+        }
+        return;
+      }
+
+      setExploitPollingId(null);
+      // Cache the result, refresh the history, close the run card and expand
+      // the new run's row so its result shows inline (like a vuln description).
+      setExploitResults((m) => ({ ...m, [res.exploit_id]: res }));
+      setExpandedExploit(res.exploit_id);
+      setExploitVuln(null);
+      fetchExploits();
+      const doneMsg = res.result_summary || `Exploit finished with status: ${res.status}`;
+      const isFailed = res.status === "failed";
+      toast({
+        title: "Exploitation Completed",
+        description: doneMsg,
+        variant: isFailed ? "destructive" : undefined,
+      });
+    } catch (e) {
+      setExploitPollingId(null);
+      const msg = e instanceof ApiError ? e.message : "Could not fetch exploit completion status";
+      toast({ title: "Exploit Polling Error", description: msg, variant: "destructive" });
+    }
+  }, [toast, fetchExploits]);
+
+  const handleExploitCancel = async () => {
+    if (exploitPollingId == null) return;
+    try {
+      await exploitsApi.cancel(exploitPollingId);
+      toast({ title: "Exploit Cancelled", description: `Exploit EXP-${exploitPollingId} was cancelled.` });
+    } catch (e) {
+      const msg = e instanceof ApiError ? e.message : "Could not cancel exploit";
+      toast({ title: "Cancel Failed", description: msg, variant: "destructive" });
+    }
+  };
+
   const handleExploitConfirm = async () => {
     setShowExploitDisclaimer(false);
     if (!exploitTargetIp.trim() || !exploitType) return;
@@ -356,13 +525,23 @@ const NetworkScans = () => {
         vuln_id: exploitVuln?.vuln_id,
       });
       toast({ title: "Exploit Queued", description: res.message });
-      setExploitVuln(null);
+      setExploitPollingId(res.exploit_id);
+      pollExploitCompletion(res.exploit_id);
+      // keep the dialog open (exploitVuln stays) so the result shows inline
     } catch (e) {
       const msg = e instanceof ApiError ? e.message : "Failed to run exploit";
       toast({ title: "Exploit Failed", description: msg, variant: "destructive" });
     } finally {
       setExploitRunning(false);
     }
+  };
+
+  // Hand off to remediation: pre-select this exploit (the remediation page
+  // derives the vulnerability from it), then navigate.
+  const goRemediate = (exploitId: number, vulnId: number | null) => {
+    remediationStore.setSelectedExploitId(String(exploitId));
+    remediationStore.setSelectedVulnId(vulnId != null ? String(vulnId) : "");
+    navigate("/remediations");
   };
 
   // ── Pagination helper ─────────────────────────────────────────────
@@ -408,6 +587,7 @@ const NetworkScans = () => {
             <TabsTrigger value="monitor">Live Monitor</TabsTrigger>
             <TabsTrigger value="results">Results</TabsTrigger>
             <TabsTrigger value="vulns">Vulnerabilities</TabsTrigger>
+            <TabsTrigger value="exploits">Exploits</TabsTrigger>
             <TabsTrigger value="new">New Scan</TabsTrigger>
           </TabsList>
         </div>
@@ -476,8 +656,20 @@ const NetworkScans = () => {
                   </h2>
                 </div>
                 <div className="space-y-3">
-                  <Progress value={activeScanStatus.progress ?? 0} className="h-2" />
-                  <p className="text-xs text-muted-foreground">{activeScanStatus.progress ?? 0}% complete</p>
+                  <Progress
+                    value={activeScanStatus.progress ?? 0}
+                    className="h-2"
+                    indicatorClassName={
+                      activeScanStatus.status === "failed" || activeScanStatus.status === "cancelled"
+                        ? "bg-destructive"
+                        : activeScanStatus.status === "completed" || activeScanStatus.status === "completed_with_errors"
+                        ? "bg-success"
+                        : "bg-accent"
+                    }
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    {scanPhaseLabel(activeScanStatus.status, activeScanStatus.progress ?? 0)}
+                  </p>
                   <div className="grid grid-cols-2 gap-3 text-sm">
                     <div>
                       <p className="text-muted-foreground">Start</p>
@@ -541,7 +733,44 @@ const NetworkScans = () => {
             <div className="space-y-6">
               <div className="flex items-center gap-4">
                 <h2 className="font-semibold">Results — SCN-{selectedScan.scan_id}</h2>
+                {selectedScan.target_ip && (
+                  <span className="font-mono text-sm text-muted-foreground">{selectedScan.target_ip}</span>
+                )}
                 <span className={statusColor(selectedScan.status)}>{selectedScan.status}</span>
+                <div className="ml-auto flex gap-2">
+                  {["completed", "completed_with_errors"].includes(selectedScan.status) && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={handleReExtract}
+                      disabled={reExtracting}
+                      title="Re-run vulnerability extraction on the stored scan results — no re-scan"
+                    >
+                      {reExtracting ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <RefreshCw className="h-4 w-4" />
+                      )}
+                      <span className="ml-2">Re-extract</span>
+                    </Button>
+                  )}
+                  {["failed", "cancelled"].includes(selectedScan.status) && selectedScan.target_ip && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={handleReRunScan}
+                      disabled={reRunning}
+                      title={`Run a fresh scan against ${selectedScan.target_ip}`}
+                    >
+                      {reRunning ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Play className="h-4 w-4" />
+                      )}
+                      <span className="ml-2">Re-run Scan</span>
+                    </Button>
+                  )}
+                </div>
               </div>
 
               {(extractionError || selectedScan.error_detail) && (
@@ -680,49 +909,6 @@ const NetworkScans = () => {
               </div>
             )}
 
-            {exploitVuln && (
-              <div className="bg-card border border-border rounded-lg p-4 mb-4 space-y-3">
-                <div className="flex items-center justify-between">
-                  <h3 className="font-semibold text-sm">Run Exploit — V-{exploitVuln.vuln_id} ({exploitVuln.script_id})</h3>
-                  <Button variant="ghost" size="sm" onClick={() => setExploitVuln(null)}>Cancel</Button>
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  <div className="space-y-1">
-                    <Label className="text-xs">Target IP</Label>
-                    <Input
-                      value={exploitTargetIp}
-                      onChange={(e) => handleExploitTargetIpChange(e.target.value)}
-                      placeholder="192.168.1.100"
-                      disabled={exploitRunning}
-                      className={exploitIpError ? "border-destructive" : ""}
-                    />
-                    {exploitIpError && <p className="text-xs text-destructive">{exploitIpError}</p>}
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs">Exploit Type</Label>
-                    <Select value={exploitType} onValueChange={setExploitType}>
-                      <SelectTrigger><SelectValue placeholder="Select exploit..." /></SelectTrigger>
-                      <SelectContent>
-                        {exploitTypes.map((t) => (
-                          <SelectItem key={t.key} value={t.key}>{exploitLabel(t.key)} ({t.tool})</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="flex items-end">
-                    <Button
-                      className="gap-2 w-full"
-                      disabled={!exploitType || !exploitTargetIp.trim() || !!exploitIpError || exploitRunning}
-                      onClick={handleExploitRun}
-                    >
-                      {exploitRunning ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
-                      Execute
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            )}
-
             {allVulns.length === 0 && !vulnsLoading && !vulnsError ? (
               <EmptyState message="No vulnerabilities found yet. Run a scan first." />
             ) : (
@@ -757,9 +943,13 @@ const NetworkScans = () => {
                             </td>
                             <td className="p-3 text-muted-foreground text-xs">{new Date(v.timestamp).toLocaleDateString()}</td>
                             <td className="p-3">
-                              <Button variant="outline" size="sm" className="gap-1" onClick={(e) => { e.stopPropagation(); handleExploitClick(v); }}>
-                                <Crosshair className="h-3 w-3" /> Exploit
-                              </Button>
+                              {applicableTypes(v).length > 0 ? (
+                                <Button variant="outline" size="sm" className="gap-1" onClick={(e) => { e.stopPropagation(); handleExploitClick(v); }}>
+                                  <Crosshair className="h-3 w-3" /> Exploit
+                                </Button>
+                              ) : (
+                                <span className="text-xs text-muted-foreground">Detection only</span>
+                              )}
                             </td>
                           </tr>
                           {expandedVuln === v.vuln_id && v.raw_output && (
@@ -780,6 +970,122 @@ const NetworkScans = () => {
           </div>
         </TabsContent>
 
+        {/* ── Exploits (persistent run history + re-viewable results) ── */}
+        <TabsContent value="exploits">
+          <div className="space-y-4">
+            {/* Run config — arrived here from the Vulnerabilities tab's Exploit button */}
+            {exploitVuln && (
+              <div className="bg-card border border-border rounded-lg p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <h3 className="font-semibold text-sm">Run Exploit — V-{exploitVuln.vuln_id} ({exploitVuln.script_id})</h3>
+                  <Button variant="ghost" size="sm" onClick={() => setExploitVuln(null)}>Cancel</Button>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div className="space-y-1">
+                    <Label className="text-xs">Target IP</Label>
+                    <Input
+                      value={exploitTargetIp}
+                      onChange={(e) => handleExploitTargetIpChange(e.target.value)}
+                      placeholder="192.168.1.100"
+                      disabled={exploitRunning}
+                      className={exploitIpError ? "border-destructive" : ""}
+                    />
+                    {exploitIpError && <p className="text-xs text-destructive">{exploitIpError}</p>}
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">Exploit Type</Label>
+                    <Select value={exploitType} onValueChange={setExploitType}>
+                      <SelectTrigger><SelectValue placeholder="Select exploit..." /></SelectTrigger>
+                      <SelectContent>
+                        {applicableTypes(exploitVuln).map((t) => (
+                          <SelectItem key={t.key} value={t.key}>{exploitLabel(t.key)} ({t.tool})</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="flex items-end gap-2">
+                    <Button
+                      className="gap-2 flex-1"
+                      disabled={!exploitType || !exploitTargetIp.trim() || !!exploitIpError || exploitRunning || exploitPollingId != null}
+                      onClick={handleExploitRun}
+                    >
+                      {exploitRunning || exploitPollingId != null ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
+                      {exploitPollingId != null ? "Running..." : "Execute"}
+                    </Button>
+                    {exploitPollingId != null && (
+                      <Button variant="destructive" className="gap-2" onClick={handleExploitCancel}>
+                        <XCircle className="h-4 w-4" /> Cancel
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-semibold">Exploit Runs</h2>
+              <Button variant="outline" size="sm" className="gap-2" onClick={fetchExploits} disabled={exploitsLoading}>
+                <RefreshCw className={`h-4 w-4 ${exploitsLoading ? "animate-spin" : ""}`} /> Refresh
+              </Button>
+            </div>
+
+            {exploitsList.length === 0 ? (
+              <EmptyState message="No exploit runs yet. Run an exploit from the Vulnerabilities tab." />
+            ) : (
+              <div className="stat-card overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b text-left text-muted-foreground">
+                      {["ID", "Type", "Target", "Vuln", "Status", "Result", "When", ""].map((h) => (
+                        <th key={h} className="p-3 font-medium">{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {exploitsList.map((e) => (
+                      <Fragment key={e.exploit_id}>
+                        <tr className="border-b hover:bg-muted/30 cursor-pointer" onClick={() => toggleExploitRow(e.exploit_id)}>
+                          <td className="p-3">E-{e.exploit_id}</td>
+                          <td className="p-3">{exploitLabel(e.exploit_type)}</td>
+                          <td className="p-3 font-mono text-xs">{e.target_ip}</td>
+                          <td className="p-3">{e.vuln_id != null ? `V-${e.vuln_id}` : "—"}</td>
+                          <td className="p-3">{e.status}</td>
+                          <td className="p-3">
+                            {e.vulnerable == null
+                              ? "—"
+                              : e.vulnerable
+                                ? <span className="text-destructive">vulnerable</span>
+                                : <span className="text-emerald-600">not vulnerable</span>}
+                          </td>
+                          <td className="p-3 text-muted-foreground text-xs">{new Date(e.timestamp).toLocaleString()}</td>
+                          <td className="p-3">{expandedExploit === e.exploit_id ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}</td>
+                        </tr>
+                        {expandedExploit === e.exploit_id && (
+                          <tr>
+                            <td colSpan={8} className="p-4 bg-muted/30">
+                              {exploitResults[e.exploit_id] ? (
+                                <ExploitResultPanel
+                                  result={exploitResults[e.exploit_id]}
+                                  onRemediate={() => goRemediate(e.exploit_id, e.vuln_id)}
+                                  onClose={() => setExpandedExploit(null)}
+                                />
+                              ) : (
+                                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                  <Loader2 className="h-4 w-4 animate-spin" /> Loading result…
+                                </div>
+                              )}
+                            </td>
+                          </tr>
+                        )}
+                      </Fragment>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </TabsContent>
+
         {/* ── New Scan ───────────────────────────────────────────── */}
         <TabsContent value="new">
           <div className="flex items-center gap-3 p-3 rounded-lg border bg-warning/5 border-warning/20 mb-6">
@@ -791,6 +1097,28 @@ const NetworkScans = () => {
             <div className="stat-card space-y-4">
               <h2 className="font-semibold">Scan Configuration</h2>
               <div className="space-y-3">
+                {authTargets.length > 0 && (
+                  <div className="space-y-1">
+                    <Label>Authorized Target</Label>
+                    <Select
+                      value={authTargets.some((t) => t.ip_address === targetIp) ? targetIp : undefined}
+                      onValueChange={(v) => handleIpChange(v)}
+                      disabled={scanStarting}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Pick an authorized target…" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {authTargets.map((t) => (
+                          <SelectItem key={t.target_id} value={t.ip_address}>
+                            {t.ip_address}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground">Or enter an IP manually below.</p>
+                  </div>
+                )}
                 <div className="space-y-1">
                   <Label>Target IP Address</Label>
                   <Input

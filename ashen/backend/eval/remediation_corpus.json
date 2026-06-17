@@ -1,0 +1,53 @@
+{
+  "_comment": "Curated remediation knowledge for grounding the fix-generation step. Each entry holds the CORRECT, verified fix (exact registry value / config directive / command) so retrieval steers the LLM away from hallucinated specifics (e.g. DisableSMBv1, allow_root). exploit_type/service tag what each addresses.",
+  "remediations": [
+    {
+      "id": "rem-ms17-010",
+      "exploit_type": "ms17_010_check",
+      "service": "smb",
+      "title": "Remediate MS17-010 (EternalBlue) on Windows",
+      "text": "Apply the Microsoft MS17-010 security update (e.g. KB4012212 / KB4012215 on Windows Server 2008 R2). If patching is not immediately possible, disable the SMBv1 server: set the registry value SMB1 (DWORD) to 0 under HKLM\\SYSTEM\\CurrentControlSet\\Services\\LanmanServer\\Parameters, e.g. reg add \"HKLM\\SYSTEM\\CurrentControlSet\\Services\\LanmanServer\\Parameters\" /v SMB1 /t REG_DWORD /d 0 /f, then REBOOT. The effective server-side control is SMB1=0 (there is no 'DisableSMBv1' value). Validate with nmap --script smb-vuln-ms17-010 -p445 <host>.",
+      "source": "Microsoft Security Bulletin MS17-010"
+    },
+    {
+      "id": "rem-ftp-anon",
+      "exploit_type": "ftp_brute_force",
+      "service": "ftp",
+      "title": "Disable anonymous FTP (vsftpd)",
+      "text": "If the FTP server accepts anonymous logins (the 'ftp' account accepting any password), set anonymous_enable=NO in /etc/vsftpd.conf and ensure local_enable=YES, then restart so the change takes effect (service vsftpd restart; if launched from (x)inetd, ensure the daemon is invoked with the config file or run it standalone with listen=YES). There is no 'allow_root' directive for this.",
+      "source": "vsftpd.conf manual"
+    },
+    {
+      "id": "rem-weak-creds",
+      "exploit_type": "ftp_brute_force",
+      "service": "ftp",
+      "title": "Eliminate weak/default credentials (FTP and SSH)",
+      "text": "Change all default/weak account passwords (e.g. msfadmin, service) to strong, unique values and disable or remove unused default accounts. Enforce a password policy. These accounts are shared by FTP and SSH on Unix hosts, so rotating them remediates both credential brute-force vectors.",
+      "source": "CIS Benchmarks (authentication)"
+    },
+    {
+      "id": "rem-ssh-harden",
+      "exploit_type": "ssh_brute_force",
+      "service": "ssh",
+      "title": "Harden SSH against credential brute force",
+      "text": "Rotate weak/default account passwords to strong values. Prefer key-based authentication and set 'PasswordAuthentication no' in /etc/ssh/sshd_config, set 'PermitRootLogin no', then reload sshd (service ssh reload). Deploy fail2ban to throttle repeated failed logins.",
+      "source": "OpenSSH sshd_config manual; CIS Benchmarks"
+    },
+    {
+      "id": "rem-shellshock",
+      "exploit_type": "shellshock_cgi",
+      "service": "http",
+      "title": "Patch Shellshock (CVE-2014-6271 / CVE-2014-7169)",
+      "text": "Update bash to a patched build: apt-get update && apt-get install --only-upgrade bash (or the distro equivalent). Verify the fix: env x='() { :;}; echo vulnerable' bash -c true should NOT print 'vulnerable'. Disable unneeded CGI (a2dismod cgi cgid) and restart Apache (service apache2 restart).",
+      "source": "CVE-2014-6271; distro bash security update"
+    },
+    {
+      "id": "rem-samba-usermap",
+      "exploit_type": null,
+      "service": "smb",
+      "title": "Remediate Samba usermap_script RCE (CVE-2007-2447)",
+      "text": "Upgrade Samba to a fixed release (>= 3.0.25). As mitigation, remove any 'username map script' directive from smb.conf and restart smbd. (Distinct from MS17-010, which is a Windows SMBv1 flaw.)",
+      "source": "CVE-2007-2447; Samba release notes"
+    }
+  ]
+}

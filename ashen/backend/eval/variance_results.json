@@ -1,0 +1,465 @@
+{
+  "generated": "2026-06-14T23:43:23.941588+00:00",
+  "seeds": [
+    1,
+    2,
+    3,
+    4,
+    5
+  ],
+  "temperature": 0.7,
+  "summary": {
+    "off": {
+      "p1": [
+        0.929,
+        0.258
+      ],
+      "mrr": [
+        0.867,
+        0.34
+      ],
+      "fab": [
+        null,
+        null
+      ],
+      "n": 15
+    },
+    "plain": {
+      "p1": [
+        0.5,
+        0.5
+      ],
+      "mrr": [
+        0.6,
+        0.416
+      ],
+      "fab": [
+        0.729,
+        0.237
+      ],
+      "n": 15
+    },
+    "action_aware": {
+      "p1": [
+        0.786,
+        0.41
+      ],
+      "mrr": [
+        0.8,
+        0.356
+      ],
+      "fab": [
+        0.7,
+        0.332
+      ],
+      "n": 15
+    }
+  },
+  "rows": [
+    {
+      "target": "metasploitable2",
+      "seed": 1,
+      "condition": "off",
+      "top1": null,
+      "precision_at_1": null,
+      "reciprocal_rank": 0.0,
+      "fabrication_rate": null
+    },
+    {
+      "target": "metasploitable2",
+      "seed": 1,
+      "condition": "plain",
+      "top1": "ms17_010_check",
+      "precision_at_1": 0.0,
+      "reciprocal_rank": 0.5,
+      "fabrication_rate": null
+    },
+    {
+      "target": "metasploitable2",
+      "seed": 1,
+      "condition": "action_aware",
+      "top1": "ssh_brute_force",
+      "precision_at_1": 1.0,
+      "reciprocal_rank": 1.0,
+      "fabrication_rate": 1.0
+    },
+    {
+      "target": "metasploitable2",
+      "seed": 2,
+      "condition": "off",
+      "top1": "ftp_brute_force",
+      "precision_at_1": 1.0,
+      "reciprocal_rank": 1.0,
+      "fabrication_rate": null
+    },
+    {
+      "target": "metasploitable2",
+      "seed": 2,
+      "condition": "plain",
+      "top1": "ms17_010_check",
+      "precision_at_1": 0.0,
+      "reciprocal_rank": 0.5,
+      "fabrication_rate": null
+    },
+    {
+      "target": "metasploitable2",
+      "seed": 2,
+      "condition": "action_aware",
+      "top1": "ssh_brute_force",
+      "precision_at_1": 1.0,
+      "reciprocal_rank": 1.0,
+      "fabrication_rate": 1.0
+    },
+    {
+      "target": "metasploitable2",
+      "seed": 3,
+      "condition": "off",
+      "top1": "ftp_brute_force",
+      "precision_at_1": 1.0,
+      "reciprocal_rank": 1.0,
+      "fabrication_rate": null
+    },
+    {
+      "target": "metasploitable2",
+      "seed": 3,
+      "condition": "plain",
+      "top1": "ms17_010_check",
+      "precision_at_1": 0.0,
+      "reciprocal_rank": 0.5,
+      "fabrication_rate": 0.5
+    },
+    {
+      "target": "metasploitable2",
+      "seed": 3,
+      "condition": "action_aware",
+      "top1": "ssh_brute_force",
+      "precision_at_1": 1.0,
+      "reciprocal_rank": 1.0,
+      "fabrication_rate": 1.0
+    },
+    {
+      "target": "metasploitable2",
+      "seed": 4,
+      "condition": "off",
+      "top1": "ftp_brute_force",
+      "precision_at_1": 1.0,
+      "reciprocal_rank": 1.0,
+      "fabrication_rate": null
+    },
+    {
+      "target": "metasploitable2",
+      "seed": 4,
+      "condition": "plain",
+      "top1": "ms17_010_check",
+      "precision_at_1": 0.0,
+      "reciprocal_rank": 0.0,
+      "fabrication_rate": null
+    },
+    {
+      "target": "metasploitable2",
+      "seed": 4,
+      "condition": "action_aware",
+      "top1": "ssh_brute_force",
+      "precision_at_1": 1.0,
+      "reciprocal_rank": 1.0,
+      "fabrication_rate": 1.0
+    },
+    {
+      "target": "metasploitable2",
+      "seed": 5,
+      "condition": "off",
+      "top1": "shellshock_cgi",
+      "precision_at_1": 0.0,
+      "reciprocal_rank": 0.0,
+      "fabrication_rate": null
+    },
+    {
+      "target": "metasploitable2",
+      "seed": 5,
+      "condition": "plain",
+      "top1": "ms17_010_check",
+      "precision_at_1": 0.0,
+      "reciprocal_rank": 0.5,
+      "fabrication_rate": null
+    },
+    {
+      "target": "metasploitable2",
+      "seed": 5,
+      "condition": "action_aware",
+      "top1": "ssh_brute_force",
+      "precision_at_1": 1.0,
+      "reciprocal_rank": 1.0,
+      "fabrication_rate": 1.0
+    },
+    {
+      "target": "shellshock-ubuntu1404",
+      "seed": 1,
+      "condition": "off",
+      "top1": "shellshock_cgi",
+      "precision_at_1": 1.0,
+      "reciprocal_rank": 1.0,
+      "fabrication_rate": null
+    },
+    {
+      "target": "shellshock-ubuntu1404",
+      "seed": 1,
+      "condition": "plain",
+      "top1": "shellshock_cgi",
+      "precision_at_1": 1.0,
+      "reciprocal_rank": 1.0,
+      "fabrication_rate": 0.5
+    },
+    {
+      "target": "shellshock-ubuntu1404",
+      "seed": 1,
+      "condition": "action_aware",
+      "top1": null,
+      "precision_at_1": null,
+      "reciprocal_rank": 0.0,
+      "fabrication_rate": null
+    },
+    {
+      "target": "shellshock-ubuntu1404",
+      "seed": 2,
+      "condition": "off",
+      "top1": "shellshock_cgi",
+      "precision_at_1": 1.0,
+      "reciprocal_rank": 1.0,
+      "fabrication_rate": null
+    },
+    {
+      "target": "shellshock-ubuntu1404",
+      "seed": 2,
+      "condition": "plain",
+      "top1": "shellshock_cgi",
+      "precision_at_1": 1.0,
+      "reciprocal_rank": 1.0,
+      "fabrication_rate": 1.0
+    },
+    {
+      "target": "shellshock-ubuntu1404",
+      "seed": 2,
+      "condition": "action_aware",
+      "top1": "shellshock_cgi",
+      "precision_at_1": 1.0,
+      "reciprocal_rank": 1.0,
+      "fabrication_rate": 0.5
+    },
+    {
+      "target": "shellshock-ubuntu1404",
+      "seed": 3,
+      "condition": "off",
+      "top1": "shellshock_cgi",
+      "precision_at_1": 1.0,
+      "reciprocal_rank": 1.0,
+      "fabrication_rate": null
+    },
+    {
+      "target": "shellshock-ubuntu1404",
+      "seed": 3,
+      "condition": "plain",
+      "top1": "shellshock_cgi",
+      "precision_at_1": 1.0,
+      "reciprocal_rank": 1.0,
+      "fabrication_rate": 0.6
+    },
+    {
+      "target": "shellshock-ubuntu1404",
+      "seed": 3,
+      "condition": "action_aware",
+      "top1": "shellshock_cgi",
+      "precision_at_1": 1.0,
+      "reciprocal_rank": 1.0,
+      "fabrication_rate": 0.5
+    },
+    {
+      "target": "shellshock-ubuntu1404",
+      "seed": 4,
+      "condition": "off",
+      "top1": "shellshock_cgi",
+      "precision_at_1": 1.0,
+      "reciprocal_rank": 1.0,
+      "fabrication_rate": null
+    },
+    {
+      "target": "shellshock-ubuntu1404",
+      "seed": 4,
+      "condition": "plain",
+      "top1": "shellshock_cgi",
+      "precision_at_1": 1.0,
+      "reciprocal_rank": 1.0,
+      "fabrication_rate": null
+    },
+    {
+      "target": "shellshock-ubuntu1404",
+      "seed": 4,
+      "condition": "action_aware",
+      "top1": "ssh_brute_force",
+      "precision_at_1": 0.0,
+      "reciprocal_rank": 0.5,
+      "fabrication_rate": 0.5
+    },
+    {
+      "target": "shellshock-ubuntu1404",
+      "seed": 5,
+      "condition": "off",
+      "top1": "shellshock_cgi",
+      "precision_at_1": 1.0,
+      "reciprocal_rank": 1.0,
+      "fabrication_rate": null
+    },
+    {
+      "target": "shellshock-ubuntu1404",
+      "seed": 5,
+      "condition": "plain",
+      "top1": null,
+      "precision_at_1": null,
+      "reciprocal_rank": 0.0,
+      "fabrication_rate": null
+    },
+    {
+      "target": "shellshock-ubuntu1404",
+      "seed": 5,
+      "condition": "action_aware",
+      "top1": "shellshock_cgi",
+      "precision_at_1": 1.0,
+      "reciprocal_rank": 1.0,
+      "fabrication_rate": 0.5
+    },
+    {
+      "target": "metasploitable3-win2k8",
+      "seed": 1,
+      "condition": "off",
+      "top1": "ms17_010_check",
+      "precision_at_1": 1.0,
+      "reciprocal_rank": 1.0,
+      "fabrication_rate": null
+    },
+    {
+      "target": "metasploitable3-win2k8",
+      "seed": 1,
+      "condition": "plain",
+      "top1": "ms17_010_check",
+      "precision_at_1": 1.0,
+      "reciprocal_rank": 1.0,
+      "fabrication_rate": null
+    },
+    {
+      "target": "metasploitable3-win2k8",
+      "seed": 1,
+      "condition": "action_aware",
+      "top1": "ms17_010_check",
+      "precision_at_1": 1.0,
+      "reciprocal_rank": 1.0,
+      "fabrication_rate": null
+    },
+    {
+      "target": "metasploitable3-win2k8",
+      "seed": 2,
+      "condition": "off",
+      "top1": "ms17_010_check",
+      "precision_at_1": 1.0,
+      "reciprocal_rank": 1.0,
+      "fabrication_rate": null
+    },
+    {
+      "target": "metasploitable3-win2k8",
+      "seed": 2,
+      "condition": "plain",
+      "top1": "ssh_brute_force",
+      "precision_at_1": 0.0,
+      "reciprocal_rank": 0.0,
+      "fabrication_rate": null
+    },
+    {
+      "target": "metasploitable3-win2k8",
+      "seed": 2,
+      "condition": "action_aware",
+      "top1": "ssh_brute_force",
+      "precision_at_1": 0.0,
+      "reciprocal_rank": 0.5,
+      "fabrication_rate": null
+    },
+    {
+      "target": "metasploitable3-win2k8",
+      "seed": 3,
+      "condition": "off",
+      "top1": "ms17_010_check",
+      "precision_at_1": 1.0,
+      "reciprocal_rank": 1.0,
+      "fabrication_rate": null
+    },
+    {
+      "target": "metasploitable3-win2k8",
+      "seed": 3,
+      "condition": "plain",
+      "top1": "ms17_010_check",
+      "precision_at_1": 1.0,
+      "reciprocal_rank": 1.0,
+      "fabrication_rate": 1.0
+    },
+    {
+      "target": "metasploitable3-win2k8",
+      "seed": 3,
+      "condition": "action_aware",
+      "top1": "ms17_010_check",
+      "precision_at_1": 1.0,
+      "reciprocal_rank": 1.0,
+      "fabrication_rate": null
+    },
+    {
+      "target": "metasploitable3-win2k8",
+      "seed": 4,
+      "condition": "off",
+      "top1": "ms17_010_check",
+      "precision_at_1": 1.0,
+      "reciprocal_rank": 1.0,
+      "fabrication_rate": null
+    },
+    {
+      "target": "metasploitable3-win2k8",
+      "seed": 4,
+      "condition": "plain",
+      "top1": "ms17_010_check",
+      "precision_at_1": 1.0,
+      "reciprocal_rank": 1.0,
+      "fabrication_rate": 0.5
+    },
+    {
+      "target": "metasploitable3-win2k8",
+      "seed": 4,
+      "condition": "action_aware",
+      "top1": "ms17_010_check",
+      "precision_at_1": 1.0,
+      "reciprocal_rank": 1.0,
+      "fabrication_rate": 0.0
+    },
+    {
+      "target": "metasploitable3-win2k8",
+      "seed": 5,
+      "condition": "off",
+      "top1": "ms17_010_check",
+      "precision_at_1": 1.0,
+      "reciprocal_rank": 1.0,
+      "fabrication_rate": null
+    },
+    {
+      "target": "metasploitable3-win2k8",
+      "seed": 5,
+      "condition": "plain",
+      "top1": "ssh_brute_force",
+      "precision_at_1": 0.0,
+      "reciprocal_rank": 0.0,
+      "fabrication_rate": 1.0
+    },
+    {
+      "target": "metasploitable3-win2k8",
+      "seed": 5,
+      "condition": "action_aware",
+      "top1": "ftp_brute_force",
+      "precision_at_1": 0.0,
+      "reciprocal_rank": 0.0,
+      "fabrication_rate": null
+    }
+  ]
+}

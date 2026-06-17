@@ -11,11 +11,14 @@ from app.models.scan import Scan
 from app.models.target_system import TargetSystem
 from app.models.user import User
 from app.models.user_session import UserSession
+from app.models.vulnerability import Vulnerability
 from app.services.scan_executor import run_scan_background
 from app.services.scanner.nmap_scanner import kill_scan_process
+from app.services.scan_lifecycle import cancel as cancel_scan_lifecycle, extract_vulnerabilities
 from app.utils.logging_utils import create_audit_log
 from app.core.security import get_current_user
 from app.core.rate_limit import check_scan_rate
+from app.core.authz import require_action
 from app.schemas.scan_schema import ScanStartRequest
 
 router = APIRouter(prefix="/scan", tags=["Scanning"])
@@ -26,29 +29,25 @@ def start_scan(
     body: ScanStartRequest,
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
-    current_payload: dict = Depends(get_current_user)
+    current_payload: dict = Depends(get_current_user),
+    # Analyst-only + authorised-Target gate + disclaimer + rate limit — see authz.py
+    _guard: dict = Depends(require_action(
+        actor="Analyst",
+        target_from=lambda d: d.get("ip_address"),
+        disclaimer=True,
+        rate="scan",
+    )),
 ):
-    role = current_payload.get("role")
-    if role != "Analyst":
-        raise HTTPException(status_code=403, detail="Only users can start scans")
-
-    if not body.ack_disclaimer:
-        raise HTTPException(status_code=400, detail="Must acknowledge ethical disclaimer before scanning")
-
     email = current_payload.get("sub")
     user = db.query(User).filter(User.email == email).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
+    # Guard already enforced authorisation; fetch the row for its target_id.
     target = db.query(TargetSystem).filter(
         TargetSystem.ip_address == body.ip_address,
         TargetSystem.authorized == True
     ).first()
-    if not target:
-        raise HTTPException(status_code=403, detail="IP not authorized for scanning")
-
-    # P1.3: Rate limiting per user
-    check_scan_rate(email)
 
     # P1.4: Prevent duplicate active scans for same target
     active_scan = db.query(Scan).filter(
@@ -117,12 +116,15 @@ def get_scan_status(
         if not user or scan.user_id != user.user_id:
             raise HTTPException(status_code=403, detail="Not authorized to view this scan")
 
+    target_ip = scan.target.ip_address if scan.target else None
+
     # Lightweight response when scan is still in progress
     if scan.status in ("queued", "running"):
         return {
             "scan_id": scan.scan_id,
             "status": scan.status,
             "progress": scan.progress or 0,
+            "target_ip": target_ip,
             "start_time": scan.start_time,
             "end_time": None,
             "results_json": None,
@@ -133,6 +135,7 @@ def get_scan_status(
         "scan_id": scan.scan_id,
         "status": scan.status,
         "progress": scan.progress or (100 if scan.status in ("completed", "completed_with_errors") else 0),
+        "target_ip": target_ip,
         "start_time": scan.start_time,
         "end_time": scan.end_time,
         "results_json": scan.results_json,
@@ -159,16 +162,12 @@ def cancel_scan(
         if not user or scan.user_id != user.user_id:
             raise HTTPException(status_code=403, detail="Not authorized to cancel this scan")
 
-    # Valid state transitions: only queued/running can be cancelled
-    if scan.status not in ("queued", "running"):
+    # Status transition is owned by scan_lifecycle (one place, no direct write).
+    if not cancel_scan_lifecycle(db, scan, email):
         raise HTTPException(
             status_code=409,
             detail=f"Cannot cancel scan in '{scan.status}' state. Only queued/running scans can be cancelled."
         )
-
-    scan.status = "cancelled"
-    scan.end_time = datetime.utcnow()
-    db.commit()
 
     # R2: Kill the nmap subprocess if it's still running
     killed = kill_scan_process(scan_id)
@@ -180,6 +179,66 @@ def cancel_scan(
     )
 
     return {"scan_id": scan_id, "status": "cancelled", "message": "Scan cancelled successfully"}
+
+
+@router.post("/{scan_id}/re-extract")
+def re_extract_vulnerabilities(
+    scan_id: int,
+    db: Session = Depends(get_db),
+    current_payload: dict = Depends(get_current_user)
+):
+    """Re-run Vulnerability extraction on a stored Scan — e.g. after a Severity-logic
+    change — without re-scanning. Owner or admin only."""
+    scan = db.query(Scan).filter(Scan.scan_id == scan_id).first()
+    if not scan:
+        raise HTTPException(status_code=404, detail="Scan not found")
+
+    # Ownership check
+    role = current_payload.get("role")
+    email = current_payload.get("sub")
+    if role != "Admin":
+        user = db.query(User).filter(User.email == email).first()
+        if not user or scan.user_id != user.user_id:
+            raise HTTPException(status_code=403, detail="Not authorized to re-extract this scan")
+
+    if scan.status not in ("completed", "completed_with_errors"):
+        raise HTTPException(
+            status_code=409,
+            detail=f"Cannot re-extract a scan in '{scan.status}' state. Only completed scans have results."
+        )
+
+    error = extract_vulnerabilities(db, scan_id, replace=True)
+    if error:
+        raise HTTPException(status_code=422, detail=error)
+
+    # Extraction succeeded — promote completed_with_errors back to completed.
+    scan.status = "completed"
+    scan.progress = 100
+    db.commit()
+    create_audit_log(db, f"Scan {scan_id} vulnerabilities re-extracted by {email}", email)
+
+    count = db.query(Vulnerability).filter(Vulnerability.scan_id == scan_id).count()
+    return {
+        "scan_id": scan_id,
+        "status": "completed",
+        "vulnerabilities": count,
+        "message": "Vulnerabilities re-extracted",
+    }
+
+
+@router.get("/authorized-targets")
+def list_authorized_targets(
+    db: Session = Depends(get_db),
+    current_payload: dict = Depends(get_current_user),
+):
+    """Authorized target IPs an analyst may scan — powers the New Scan picker."""
+    targets = (
+        db.query(TargetSystem)
+        .filter(TargetSystem.authorized == True)
+        .order_by(TargetSystem.ip_address)
+        .all()
+    )
+    return [{"target_id": t.target_id, "ip_address": t.ip_address} for t in targets]
 
 
 @router.get("/history")

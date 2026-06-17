@@ -1,0 +1,46 @@
+{
+  "generated": "2026-06-11T23:25:50.725354+00:00",
+  "targets": [
+    {
+      "ip": "192.168.28.130",
+      "name": "metasploitable2",
+      "relevant": [
+        "ftp_brute_force",
+        "ssh_brute_force"
+      ],
+      "conditions": [
+        {
+          "use_rag": false,
+          "ranked": [
+            "ftp_brute_force",
+            "ssh_brute_force",
+            "shellshock_cgi",
+            "ms17_010_check"
+          ],
+          "cited_cves": [],
+          "precision_at_1": 1.0,
+          "reciprocal_rank": 1.0,
+          "fabrication_rate": null,
+          "recommendation": "Exploitation Order:\n\n1.Based on the provided scan results and available exploits, here are the matches ordered by priority:\n\n1. 1, Port 21, ftp_brute_force, Severity: high - vsftpd 2.3.4, weak/default credentials\n2. 1, Port 22, ssh_brute_force, Severity: high - OpenSSH 4.7p1 Debian, weak/default credentials\n3. 2, Port 80, shellshock_cgi, Severity: medium - Apache httpd 2.2.8 (Ubuntu) DAV/2, possible CGI\n4. 2, Port 139, ms17_010_check, Severity: medium - Samba smbd 3.x\n5. 2, Port 445, ms17_010_check, Severity: medium - Samba smbd 3.x (SMB)\n\nNote that the same exploit can be used for multiple ports if they have the same vulnerability and severity. In this case, 'ms17_010_check' is used for both port 139 and port 445 as they are related to the same vulnerability."
+        },
+        {
+          "use_rag": true,
+          "ranked": [
+            "ms17_010_check"
+          ],
+          "cited_cves": [
+            "CVE-2020-0796",
+            "CVE-2018-10933",
+            "CVE-2015-3306",
+            "CVE-1999-1237"
+          ],
+          "precision_at_1": 0.0,
+          "reciprocal_rank": 0.0,
+          "fabrication_rate": 1.0,
+          "recommendation": "Exploitation Order:\n\n1.Based on the provided scan results and available exploits, here are the matches with open ports, ordered by priority:\n\n1. Critical/HIGH - Port 445 | netbios-ssn | CRITICAL: SMBGhost vulnerability (ID: CVE-2020-0796) | Wormable remote code execution\n2. Critical/LIBSSH - Port 22 | ssh-openssh | CRITICAL: LibSSH authentication bypass (ID: CVE-2018-10933) | CVSS 9.8\n3. High/PROFTPD - Port 21 | ftp-vsftpd | HIGH: ProFTPD mod_copy vulnerability (ID: CVE-2015-3306) | Unauthenticated file copy\n4. High/CVE1999-1237 - Port 22 | ssh-openssh | HIGH: Multiple buffer overflows in smbvalid/smbval SMB authentication library (ID: CVE-1999-1237) | Remote attackers can execute arbitrary commands via username, password, and other methods\n5. Medium/HTTP - Port 80 | http-apache | Medium: Apache httpd 2.2.8 (Ubuntu) DAV/2, possible CGI | Possible CGI vulnerability\n\nNote that I've excluded the dot dot vulnerability as it's not directly related to a specific exploit in ASHEN, and the Samba smbd 3.x vulnerabilities are on port 445, which is already listed above."
+        }
+      ],
+      "remediations": []
+    }
+  ]
+}

@@ -1,0 +1,5 @@
+ip,name,use_rag,relevant,ranked,top1,precision_at_1,reciprocal_rank,cited_cves,fabrication_rate
+192.168.56.101,metasploitable2,False,ftp_brute_force|ssh_brute_force,ms17_010_check|ssh_brute_force|ftp_brute_force,ms17_010_check,0.0,0.5,,
+192.168.56.101,metasploitable2,True,ftp_brute_force|ssh_brute_force,ms17_010_check|ftp_brute_force|ssh_brute_force,ms17_010_check,0.0,0.5,,
+192.168.56.102,shellshock-host,False,shellshock_cgi,shellshock_cgi,shellshock_cgi,1.0,1.0,CVE-2014-6271,0.0
+192.168.56.102,shellshock-host,True,shellshock_cgi,shellshock_cgi|ms17_010_check,shellshock_cgi,1.0,1.0,CVE-2014-6271|CVE-2020-0796|CVE-1999-0236|CVE-2021-41773,0.75

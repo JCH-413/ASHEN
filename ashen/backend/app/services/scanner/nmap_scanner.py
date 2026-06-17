@@ -10,42 +10,32 @@ import uuid
 import xml.etree.ElementTree as ET
 import subprocess
 import shutil
-import threading
 from typing import Dict, Any, Optional
 import os
 
+from app.services import process
+
 
 # ── Process registry for cancellation ────────────────────────────────
+# Cancellation now lives in the deep `process` module, keyed by an opaque token.
+# These thin shims preserve the historical scan-id API used by the cancel route
+# and the security tests.
 
-_proc_lock = threading.Lock()
-_active_procs: dict[int, subprocess.Popen] = {}  # scan_id → Popen
+def _scan_token(scan_id: int) -> str:
+    return f"scan:{scan_id}"
 
 
 def register_scan_process(scan_id: int, proc: subprocess.Popen):
-    with _proc_lock:
-        _active_procs[scan_id] = proc
+    process.register(_scan_token(scan_id), proc)
 
 
 def unregister_scan_process(scan_id: int):
-    with _proc_lock:
-        _active_procs.pop(scan_id, None)
+    process.unregister(_scan_token(scan_id))
 
 
 def kill_scan_process(scan_id: int) -> bool:
     """Terminate the nmap subprocess for a given scan. Returns True if killed."""
-    with _proc_lock:
-        proc = _active_procs.pop(scan_id, None)
-    if proc is None:
-        return False
-    try:
-        proc.terminate()
-        try:
-            proc.wait(timeout=5)
-        except subprocess.TimeoutExpired:
-            proc.kill()
-        return True
-    except OSError:
-        return False
+    return process.cancel(_scan_token(scan_id))
 
 
 class NmapScanner:
@@ -77,30 +67,25 @@ class NmapScanner:
         print(f"[*] Running command: {' '.join(cmd)}")
         start = time.time()
 
-        # R2: Use Popen for subprocess tracking instead of run()
-        proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        if scan_id is not None:
-            register_scan_process(scan_id, proc)
-
-        try:
-            _, stderr = proc.communicate(timeout=600)
-        except subprocess.TimeoutExpired:
-            proc.kill()
-            proc.communicate()
-            self._cleanup(xml_file)
-            raise RuntimeError("Nmap scan timed out (Limit: 10 mins)")
-        finally:
-            if scan_id is not None:
-                unregister_scan_process(scan_id)
+        # Process lifecycle (Popen, timeout, cancellation) is owned by `process`;
+        # this module keeps only nmap's own concerns: the XML temp file + parsing.
+        token = _scan_token(scan_id) if scan_id is not None else None
+        outcome = process.run(cmd, timeout=600, token=token)
 
         duration = time.time() - start
 
-        if proc.returncode != 0:
+        if outcome.timed_out:
             self._cleanup(xml_file)
-            # returncode -15 = SIGTERM (cancelled), -9 = SIGKILL
-            if proc.returncode in (-15, -9):
-                raise RuntimeError("Scan was cancelled")
-            raise RuntimeError(f"nmap failed: {stderr.decode()}")
+            raise RuntimeError("Nmap scan timed out (Limit: 10 mins)")
+
+        # outcome.cancelled = killed via the cancel route; -15/-9 = SIGTERM/SIGKILL
+        if outcome.cancelled or outcome.returncode in (-15, -9):
+            self._cleanup(xml_file)
+            raise RuntimeError("Scan was cancelled")
+
+        if outcome.returncode != 0:
+            self._cleanup(xml_file)
+            raise RuntimeError(f"nmap failed: {outcome.stderr}")
 
         try:
             tree = ET.parse(xml_file)
@@ -169,6 +154,10 @@ class NmapScanner:
                     hostinfo['protocols'][proto].append(port_entry)
 
             parsed['hosts'].append(hostinfo)
+
+        # Treat unresolved/unreachable targets as scan failure so UI reflects failed status.
+        if not parsed['hosts'] or all(h.get('state') != 'up' for h in parsed['hosts']):
+            raise RuntimeError("Target IP not found or host is unreachable")
 
         return parsed
 

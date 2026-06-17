@@ -99,7 +99,7 @@ function createStore() {
         generating: true,
         recommendation: "",
         reviewAction: "",
-        model: "tinyllama",
+        model: "",
         generatedAt: new Date().toISOString(),
         lastError: "",
       });
@@ -111,6 +111,7 @@ function createStore() {
             state = { ...state, recommendation: state.recommendation + token };
             emit();
           },
+          (model) => update({ model }),
         );
         update({ recommendation: full, generating: false });
       } catch (e) {

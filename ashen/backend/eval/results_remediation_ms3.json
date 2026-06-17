@@ -1,0 +1,11 @@
+{
+  "generated": "2026-06-14T15:35:47.596959+00:00",
+  "host": "192.168.28.132",
+  "exploit_type": "ms17_010_check",
+  "applied_fix": "reg add \"HKLM\\SYSTEM\\CurrentControlSet\\Services\\LanmanServer\\Parameters\" /v DisableSMBv1 /t REG_DWORD /d 1 /f",
+  "note": "ASHEN's exact prescribed command (verbatim)",
+  "vuln_before": true,
+  "vuln_after": true,
+  "service_up_after": true,
+  "outcome": "not_fixed"
+}

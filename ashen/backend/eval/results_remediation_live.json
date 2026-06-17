@@ -1,0 +1,35 @@
+{
+  "generated": "2026-06-13T11:06:40.571858+00:00",
+  "host": "192.168.28.130",
+  "fix_accounts": [
+    "msfadmin",
+    "service"
+  ],
+  "remediations": [
+    {
+      "exploit_type": "ssh_brute_force",
+      "port": 22,
+      "vuln_before": true,
+      "vuln_after": false,
+      "service_up_after": true,
+      "outcome": "fixed",
+      "guidance": "## Root Cause\nThe vulnerability exists because OpenSSH 4.7p1 allows weak default credentials, making it easier for attackers to brute-force SSH logins.\n\n## Immediate Containment\n- Disable password authentication and switch to public key authentication for all SSH connections.\n- Set up a firewall rule to block incoming SSH traffic on port 22 until further notice.\n\n## Permanent Fix\n- Update the OpenSSH server to the latest version (currently OpenSSH 8.3p1) using the package manager (e.g., `apt-get update && apt-get install open_ssh`).\n- Change the default username and password settings in `/etc/ssh/sshd_config` to use strong authentication methods.\n- Implement key-based authentication for all users, ensuring each user has a unique SSH public/private key pair.\n\n## Validation\n- Verify that public key authentication is enabled by checking the `sshd_config` file for the correct configuration options (e.g., `PubKeyAuthentication yes`, `AllowRootLogin no`).\n- Test SSH login with strong credentials to confirm successful authentication.\n- Use tools like `ssh -v` or a password analyzer to check for any weak credentials.\n\n## Hardening\n- Configure the OpenSSH server to reject weak default credentials and ensure all users use strong authentication methods.\n- Enable SSH key revocation checking in `/etc/ssh/sshd_config` (e.g., `RevokedKeyCommand /usr/bin/revoked-key-identifier %r') to limit access further.\n- Regularly review and update user SSH public/private key pairs to prevent credential reuse."
+    },
+    {
+      "exploit_type": "ftp_brute_force",
+      "port": 21,
+      "vuln_before": true,
+      "vuln_after": true,
+      "service_up_after": true,
+      "outcome": "not_fixed",
+      "guidance": "## Root Cause\nvsftpd 2.3.4's default credentials are weak, allowing brute-force attacks via ftp_brute_force tools like Hydra.\n\n## Immediate Containment\n- Disable vsftpd service to prevent further exploitation.\n- Change FTP administrator credentials to strong, unique values.\n- Set up a firewall rule to block incoming FTP traffic on port 21.\n\n## Permanent Fix\n- Update vsftpd to the latest version (>= 3.0.3) from the official repositories or maintainers' websites.\n- Configure vsftpd to disallow weak default credentials by setting the `allow_root` option to \"no\".\n- Implement additional security measures, such as IP blocking and rate limiting, to prevent brute-force attacks.\n\n## Validation\n- Verify that the vsftpd service is not running after disabling it.\n- Check the FTP server logs for any successful login attempts using weak credentials.\n- Confirm that strong administrator credentials are being used successfully.\n\n## Hardening\n- Regularly update vsftpd to ensure you have the latest security patches.\n- Monitor FTP server logs regularly to detect and respond to potential brute-force attacks.\n- Implement a least-privilege approach by limiting the rights of FTP administrators."
+    }
+  ],
+  "ftp_correct_fix": {
+    "fix": "standalone vsftpd with anonymous_enable=NO; xinetd ftp disabled",
+    "vuln_after": true,
+    "service_up_after": true,
+    "outcome": "not_fixed",
+    "summary": "Credentials found \u2014 ftp:msfadmin"
+  }
+}

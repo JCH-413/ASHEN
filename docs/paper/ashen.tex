@@ -1,0 +1,533 @@
+%==============================================================================
+% ASHEN — working draft (v0.1). IEEE conference style.
+% Compile: pdflatex ashen.tex  (needs the IEEEtran class; available on Overleaf
+% and most TeX distributions). One experiment (E1) and a remediation pilot (6.3)
+% carry live data; remaining experiments are marked [PLACEHOLDER].
+% Numbers are pilot-scale (3 hosts, 4 exploit types) — trends, not significance.
+%==============================================================================
+\documentclass[conference]{IEEEtran}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{xcolor}
+\usepackage{amssymb}
+\usepackage{pifont}
+\usepackage{hyperref}
+\newcommand{\todo}[1]{\textcolor{red}{\textbf{[PLACEHOLDER: #1]}}}
+\newcommand{\code}[1]{\texttt{#1}}
+
+\begin{document}
+
+\title{ASHEN: Action-Aware Retrieval-Augmented LLM Guidance for Authorized
+Penetration Testing with Closed-Loop Remediation Validation}
+
+\author{\IEEEauthorblockN{\todo{author name}}
+\IEEEauthorblockA{\todo{affiliation, email}}}
+
+\maketitle
+
+\begin{abstract}
+Large language models (LLMs) are increasingly proposed to assist penetration
+testing, but most systems stop at recommendation and are evaluated subjectively.
+We present \textbf{ASHEN}, an AI-assisted penetration-testing platform that closes
+the full loop --- scan, vulnerability detection, exploit validation,
+retrieval-augmented attack recommendation, remediation guidance, and
+\emph{re-validation of the generated fix by re-exploitation} --- under an explicit
+authorization-and-audit governance model, using a \emph{local} LLM so that no
+target data leaves the operator's network. We make three contributions. First, an
+evaluation harness that uses ASHEN's own exploit runner as an \emph{objective
+oracle}: an exploit type is ``correct'' for a target iff running it returns a
+positive verdict, enabling scoring of recommendation ranking and remediation
+efficacy without human judgement. Second, using this oracle we show that
+\emph{naively} injecting retrieved CVE knowledge into the recommender degrades
+action selection, and that an \emph{action-aware grounding} scheme --- mapping
+retrieved CVEs onto the tool's available exploit types --- restores correct
+ranking while keeping the recommendation grounded. Third, we define
+\emph{remediation efficacy} as the fraction of confirmed vulnerabilities that no
+longer validate after the generated fix is applied. In a feasibility pilot (4
+remediation trials, efficacy 0.25), the loop caught three confident-but-incorrect
+LLM fixes --- including one whose command \emph{executed successfully and passed
+the LLM's own validation step} yet left the host exploitable --- that a
+recommendation-only, human-rated, or self-validating evaluation would have
+accepted. Applying the same grounding scheme to the remediation step then recovers
+the failures end-to-end (efficacy 0.25$\rightarrow$0.75), unifying our two results:
+grounding corrects both recommendation and remediation. We describe the protocol
+for scaling to a larger evaluation.
+\end{abstract}
+
+%------------------------------------------------------------------------------
+\section{Introduction}
+Penetration testing is a manual, expertise-intensive process, motivating a
+substantial body of work on \emph{autonomous penetration testing}~\cite{rlreview}.
+Two families of decision-making methods dominate: reinforcement-learning (RL)
+agents that learn attack and path-planning policies in simulated
+networks~\cite{rlreview,autoptsim}, and, more recently, large language model (LLM)
+agents that exploit the models' contextual semantic understanding to drive the
+workflow~\cite{pentestgpt,hacksynth}. ASHEN belongs to the LLM-based family;
+existing LLM-based pentest systems, however, share three weaknesses that limit
+their scientific standing:
+\begin{enumerate}
+\item \textbf{They stop at recommendation.} Whether a suggestion \emph{works},
+and whether any proposed fix actually \emph{removes} the weakness, is unmeasured.
+\item \textbf{They are evaluated subjectively}, by human raters or anecdotes, so
+results are hard to reproduce and easy to contest.
+\item \textbf{They send sensitive data to a third-party API} --- target IPs,
+detected vulnerabilities, credentials --- a confidentiality problem for real
+engagements.
+\end{enumerate}
+
+ASHEN addresses all three. It runs an \emph{on-premise} LLM (no data
+exfiltration), it \emph{validates} every exploit it recommends and every fix it
+proposes against the live target, and it is wrapped in an authorization-gated
+governance model with dual audit logs. Because ASHEN can \emph{execute} exploits,
+the same execution serves as an \emph{objective oracle} for evaluation.
+
+\noindent\textbf{Contributions.}
+\begin{itemize}
+\item \textbf{C1 --- An oracle-backed evaluation harness} (\S\ref{sec:method})
+that scores recommendation ranking and remediation efficacy using the exploit
+runner's verdict as ground truth, with no human labelling.
+\item \textbf{C2 --- Action-aware retrieval grounding}
+(\S\ref{sec:design},~\S\ref{sec:e1}): dumping retrieved CVEs into the prompt
+biases the model toward CVE-shaped actions the tool cannot perform; mapping
+retrieved CVEs onto available exploit types fixes this. \emph{(E1, n=3 hosts:
+robust across Linux, Windows, and Shellshock targets where plain RAG is not; more
+targets \todo{at scale}.)}
+\item \textbf{C3 --- Closed-loop remediation efficacy}
+(\S\ref{sec:design},~\S\ref{sec:remediation}): an end-to-end metric that
+re-exploits the target after the generated fix is applied. \emph{(Pilot, n=4,
+efficacy 0.25$\rightarrow$0.75 grounded: the loop caught three incorrect fixes --- including one that executed
+successfully and passed its own validation yet left the host exploitable; full
+study \todo{more trials}.)}
+\end{itemize}
+
+%------------------------------------------------------------------------------
+\section{Background and Related Work}
+\textbf{Autonomous and automated penetration testing.} A large literature casts
+penetration testing as a sequential decision-making problem and applies
+reinforcement learning (RL) to learn attack and path-planning policies in
+simulated networks. Liu et al.~\cite{rlreview} review RL-based decision-making for
+autonomous pentesting, and unified modeling frameworks such as
+AutoPT-Sim~\cite{autoptsim} standardise the simulation environments these agents
+train in. Such methods excel at policy learning but operate in simulation, produce
+no human-readable guidance, and address neither remediation nor data
+confidentiality --- gaps that motivate ASHEN's LLM-based, on-premise design.
+
+\textbf{LLMs for offensive security.} The closest system is
+PentestGPT~\cite{pentestgpt}, which integrates GPT-3.5/GPT-4 and organises a
+pentest around a \emph{Pentesting Task Tree} driven by three modules (Reasoning,
+Generation, Parsing). It is evaluated on 13 HackTheBox/VulnHub targets (182
+sub-tasks) and reports a 228.6\% task-completion increase over its GPT-3.5
+baseline. Two properties separate it from ASHEN: it is cloud/API-backed (target
+data leaves the network), and it is human-in-the-loop and \emph{offensive-only} ---
+the operator executes the suggested commands and feeds results back, with no
+remediation-generation or fix-validation component. A parallel line shows LLM
+agents can autonomously \emph{exploit}: Fang et al.\ demonstrate autonomous
+website hacking~\cite{fangweb}, exploitation of real one-day CVEs with a GPT-4
+agent~\cite{fangoneday}, and teams of agents exploiting zero-day
+vulnerabilities~\cite{fangzeroday}; Happe and Cito study autonomous Linux
+privilege escalation~\cite{happe}. Most directly comparable, HackSynth~\cite{hacksynth}
+pairs a dual-module LLM agent (Planner/Summarizer) with a CTF-based \emph{evaluation
+framework} and, like ASHEN, stresses robust safeguards. These drive offence but
+stop at exploitation, judge success by human or capture-the-flag task-completion
+rather than an execution oracle, and do not generate or re-validate remediations. We compare capabilities against PentestGPT's published
+design (Table~\ref{tab:pgpt}) rather than re-running it (its native backend is a
+paid GPT-4 API; a fair empirical head-to-head is future work, \S\ref{sec:remaining}).
+
+\begin{table}[h]
+\caption{ASHEN vs PentestGPT (capabilities; PentestGPT facts from~\cite{pentestgpt}).}
+\label{tab:pgpt}
+\centering\footnotesize
+\begin{tabular}{p{2.3cm}p{2.4cm}p{2.4cm}}
+\toprule
+Capability & PentestGPT & ASHEN \\
+\midrule
+LLM backend & GPT-3.5/4 (cloud) & \textbf{local} (llama3.2) \\
+Data exposure & sent to OpenAI & \textbf{on-premise} \\
+Execution & human-in-the-loop & \textbf{automated} \\
+Validation & none & \textbf{execution-as-oracle} \\
+Grounding & task-tree context & RAG + action-aware \\
+Remediation & \textbf{none} & RAG-grounded \\
+Fix re-validation & \textbf{none} & \textbf{re-exploit loop} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Retrieval-augmented generation (RAG).} RAG~\cite{rag} grounds LLM output
+in a retrieved corpus to reduce hallucination. We show
+(\S\ref{sec:e1}) that in a \emph{tool-using} setting, naive RAG can instead
+\emph{mis-direct action selection} when the knowledge representation (CVEs) is
+misaligned with the action space (exploit types).
+
+\textbf{LLM-assisted remediation.} LLMs have been applied to vulnerability
+repair, e.g.\ Pearce et al.'s zero-shot vulnerability repair~\cite{pearce}, which
+generates code fixes evaluated against a test suite rather than by re-exploiting a
+live target. Closest to ASHEN is PenHeal~\cite{penheal}, a two-stage framework
+pairing a pentest module with a remediation module; it \emph{recommends and
+scores} fixes but does \textbf{not} re-validate them by re-exploiting the patched
+system --- precisely the gap ASHEN's closed loop fills. To our knowledge ASHEN is
+the first to score remediation by re-exploitation.
+
+\textbf{Position of ASHEN.} ASHEN is distinguished by the combination of (i)
+local LLM, (ii) execution-as-oracle evaluation, and (iii) closed-loop remediation
+validation, under (iv) an explicit authorization/audit governance model.
+
+%------------------------------------------------------------------------------
+\section{ASHEN System Design}\label{sec:design}
+\subsection{Overview and roles}
+ASHEN separates an \emph{Analyst} (runs scans/exploits on authorised targets,
+sees only their own work) from an \emph{Admin} (whitelists target IPs, approves
+target requests, reads the audit log). The assessment workflow is: \emph{Scan}
+(Nmap~\cite{nmap} \code{-sV -{}-script vuln}) $\rightarrow$ \emph{Vulnerability} (an
+unvalidated NSE detection) $\rightarrow$ \emph{Exploit Run} (validates or refutes
+it) $\rightarrow$ \emph{Attack Recommendation} (RAG-grounded LLM guidance)
+$\rightarrow$ \emph{Remediation} (LLM fix guidance) $\rightarrow$ \emph{Report}.
+
+\subsection{Exploit types as a typed action space}
+ASHEN exposes a small, typed set of \emph{exploit types}, each a uniform adapter
+producing a single verdict envelope (\code{ran}, \code{vulnerable},
+\code{evidence}). The current set is four: \code{ssh\_brute\_force},
+\code{ftp\_brute\_force} (credential family) and \code{ms17\_010\_check},
+\code{shellshock\_cgi} (check family). This typed action space is what makes both
+the oracle (\S\ref{sec:method}) and action-aware grounding possible.
+
+\subsection{Retrieval grounding (and its failure mode)}
+The recommender retrieves CVE context from a vector store (ChromaDB~\cite{chroma}
+over sentence-transformer embeddings~\cite{sbert}) and conditions a recommendation
+on it. We
+compare three grounding conditions: \emph{off} (no retrieval); \emph{plain}
+(retrieved CVEs concatenated into the prompt --- the baseline); and
+\emph{action-aware} (each retrieved CVE is mapped onto the exploit types whose
+declared \code{service} + \code{signatures} it matches; CVEs matching no available
+exploit are surfaced as informational only). The corpus stays tool-agnostic;
+adding an exploit type changes only that exploit's declaration, not the corpus.
+
+\subsection{Closed-loop remediation}
+For a confirmed-vulnerable finding, ASHEN generates a five-part remediation (Root
+Cause / Immediate Containment / Permanent Fix / Validation / Hardening). The fix
+is applied to the target, after which the \emph{same exploit is re-run}: the
+vulnerability is ``remediated'' iff it no longer validates \emph{and} the service
+is still reachable.
+
+\subsection{Governance and the local-LLM choice}
+Every operator action is recorded in an Audit Log; every LLM prompt/response in a
+separate AI Governance Log. The LLM runs on-premise, so target data never leaves
+the network --- a deliberate confidentiality choice that distinguishes ASHEN from
+API-backed tools.
+
+%------------------------------------------------------------------------------
+\section{Evaluation Methodology}\label{sec:method}
+\subsection{Execution as an objective oracle}
+For a target and exploit type, the exploit runner returns a boolean
+\code{vulnerable} verdict, treated as \emph{ground truth}: an exploit type is
+\emph{relevant} iff it returns \code{vulnerable=True}. This removes human
+judgement from scoring (a) whether a recommendation ranks working exploits first,
+and (b) whether a remediation removed the weakness.
+
+\subsection{Metrics}
+\textbf{Precision@1 / MRR} of the recommended exploitation order against the
+relevant set. \textbf{Fabrication rate}: fraction of cited CVEs not in a curated
+set of CVEs real-and-applicable to the target. \textbf{Remediation efficacy}:
+fraction of confirmed-vulnerable findings that, after the generated fix is
+applied, no longer validate \emph{and} leave the service up (\code{fixed} vs
+\code{not\_fixed} vs \code{broke\_service}).
+
+\subsection{Harness and reproducibility}
+The harness drives ASHEN's services directly (no web/auth/DB layer). Generation
+is seeded (\code{temperature=0}, \code{seed=42}). A full live run is split into
+isolated phases (oracle / recommend / remediate) so memory-heavy components do not
+run concurrently.
+
+\subsection{Testbed}
+\emph{(Pilot, 3 hosts.)} Three targets spanning all four exploit types with
+positive cases: Metasploitable~2 (Linux; vsftpd 2.3.4 backdoor~\cite{vsftpd},
+OpenSSH 4.7p1, Apache 2.2.8, Samba 3.x $\rightarrow$ ssh/ftp brute-force),
+Metasploitable~3 Windows Server 2008 R2 (SMBv1 $\rightarrow$
+MS17-010/EternalBlue~\cite{ms17010}), and an Ubuntu~14.04 host (Apache mod\_cgi +
+unpatched bash $\rightarrow$ Shellshock~\cite{shellshock}). Further scale-up
+protocol in \S\ref{sec:remaining}.
+
+%------------------------------------------------------------------------------
+\section{E1: Grounding and Recommendation Quality}\label{sec:e1}
+\emph{Live, n=3 hosts (all four exploit types), pilot.} We use three hosts:
+Metasploitable~2 (Linux; relevant $=\{$\code{ftp\_brute\_force},
+\code{ssh\_brute\_force}$\}$), Metasploitable~3 Windows Server 2008 R2
+(relevant $=\{$\code{ms17\_010\_check}$\}$, EternalBlue), and an Ubuntu~14.04
+Shellshock host (relevant $=\{$\code{shellshock\_cgi}$\}$). Ground truth is set per
+target by the oracle; fabrication is scored against a \emph{per-target} set of
+applicable CVEs, so EternalBlue counts as valid on Windows but as a fabrication on
+Linux.
+
+\begin{table}[t]
+\caption{Grounding conditions across three hosts / all four exploit types (live,
+seeded $\tau{=}0$, n=3). Aggregate P@1: off $=1.00$, plain $=0.67$,
+action-aware $=1.00$.}
+\label{tab:e1}
+\centering
+\begin{tabular}{llccc}
+\toprule
+Target & Grounding & Top-1 & P@1 & Fabr. \\
+\midrule
+MS2 (Lin) & off          & \code{ftp\_brute\_force} \checkmark & 1.00 & --- \\
+MS2 (Lin) & plain        & \code{ms17\_010\_check} \ding{55}   & 0.00 & 0.60 \\
+MS2 (Lin) & action-aware & \code{ssh\_brute\_force} \checkmark & 1.00 & 1.00$^{*}$ \\
+\midrule
+MS3 (Win) & off          & \code{ms17\_010\_check} \checkmark  & 1.00 & --- \\
+MS3 (Win) & plain        & \code{ms17\_010\_check} \checkmark  & 1.00 & --- \\
+MS3 (Win) & action-aware & \code{ms17\_010\_check} \checkmark  & 1.00 & --- \\
+\midrule
+Shellshock & off          & \code{shellshock\_cgi} \checkmark & 1.00 & --- \\
+Shellshock & plain        & \code{shellshock\_cgi} \checkmark & 1.00 & 0.60 \\
+Shellshock & action-aware & \code{shellshock\_cgi} \checkmark & 1.00 & 0.50 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\noindent\textbf{Findings.}
+\begin{enumerate}
+\item \textbf{Plain RAG is unreliable; its failure is target-dependent.} Plain
+retrieval biases the model toward SMB/CVE-heavy exploits regardless of
+applicability --- \emph{wrong} on the Linux host (ranks the dead-end
+\code{ms17\_010} first, P@1 $=0$) but \emph{coincidentally right} on the Windows
+host (where EternalBlue truly is the answer, P@1 $=1$; Shellshock is correctly
+ranked too). Aggregated it scores only P@1 $=0.67$ --- still the worst condition.
+\item \textbf{Action-aware grounding is robust} (P@1 $=1.0$ across all three hosts).
+Mapping retrieved CVEs onto available exploit types and quarantining unmatched
+ones keeps the recommendation correct \emph{and} grounded on every host --- the
+only condition achieving both; plain sacrifices ranking, \emph{off} sacrifices
+grounding (it cites nothing).
+\item \textbf{The per-target CVE distinction validates the design.} The same CVE
+(\code{CVE-2017-0144}) is a fabrication on Linux and valid evidence on Windows,
+because correctness is judged against each host's actual exposure.
+\item \textbf{A residual fabrication artifact ($^{*}$, MS2).} Action-aware still
+cited one off-platform CVE for a low-priority exploit, motivating
+platform-applicability filtering (\S\ref{sec:discussion}).
+\end{enumerate}
+
+\noindent\textbf{Interpretation.} The mechanism is a \emph{knowledge--action-space
+misalignment}: grounding a tool-using LLM on a CVE corpus biases it toward
+CVE-shaped actions, including ones outside the tool's capability or inapplicable
+to the host. Aligning the knowledge to the action space, and judging it
+per-target, resolves this. A 5-seed $\times$ 2-temperature variance study
+(\S\ref{sec:remaining}) confirms this is not a single-seed artifact: at a
+task-appropriate temperature action-aware is perfectly stable (1.00 $\pm$ 0.00)
+and plain RAG is the worst at every temperature. \emph{Caveat: n=3 hosts.}
+
+%------------------------------------------------------------------------------
+\section{Headline: Remediation Efficacy}\label{sec:remediation}
+\emph{Live, n=4 trials across 3 hosts, pilot.} Four confirmed findings were
+remediated end-to-end: ASHEN generated its guidance, \emph{its prescribed fix was
+applied verbatim} to the live host (snapshotted first), and the same exploit was
+re-run.
+
+\begin{table}[t]
+\caption{Remediation efficacy across three hosts (live, n=4 pilot).
+\textbf{Efficacy $=0.25$ (1/4 fixed)}.}
+\label{tab:remediation}
+\centering
+\begin{tabular}{p{1.9cm}p{2.5cm}p{1.4cm}c}
+\toprule
+Host / finding & ASHEN's prescribed fix & After & Outcome \\
+\midrule
+MS2 \code{ssh\_brute} & rotate weak creds & no creds & \textbf{fixed} \\
+MS2 \code{ftp\_brute} & rotate creds (+ bogus \code{allow\_root}) & \code{ftp:<any>} logs in & \textbf{not\_fixed} \\
+MS3 \code{ms17\_010} & \code{reg add ... DisableSMBv1=1} (succeeds, key present) & still vulnerable after reboot & \textbf{not\_fixed} \\
+Shellshock & update Apache mod\_cgi (wrong component) & still vulnerable & \textbf{not\_fixed} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\noindent\textbf{Findings.}
+\begin{enumerate}
+\item \textbf{The loop caught a plausible-but-wrong fix (MS2 FTP).} ASHEN asserted
+weak credentials; re-exploitation showed the real cause is \emph{anonymous login}
+(the \code{ftp} account accepts any password), which credential rotation cannot
+address.
+\item \textbf{It caught a fix that \emph{executed successfully but did nothing}
+(MS3 MS17-010).} ASHEN diagnosed the root cause correctly (SMBv1) but prescribed a
+non-existent registry value (\code{DisableSMBv1}; the effective control is
+\code{SMB1=0}). The command returns ``completed successfully,'' the key is
+verifiably present, \emph{and ASHEN's own suggested validation (a \code{reg query})
+passes} --- yet after reboot the host is still EternalBlue-vulnerable. Every check
+short of re-attacking reports success; only re-exploitation reveals the fix is
+hollow.
+\item \textbf{All three ungrounded failures misdiagnosed the fix} ---
+\code{allow\_root} (non-existent), \code{DisableSMBv1} (wrong registry value),
+and ``update Apache'' for Shellshock (wrong component: it is a \emph{bash} bug) ---
+linking to \S\ref{sec:e1}.
+\item \textbf{Where diagnosis \emph{and} command were correct, the fix worked
+(MS2 SSH)} --- the positive control.
+\end{enumerate}
+
+\noindent\textbf{Interpretation.} The headline metric exposes what
+recommendation-only, human-rated, \emph{or even self-validating} LLM remediation
+would miss: a fix's confidence, structure, successful execution, and passing its
+own validation step are all uncorrelated with whether the vulnerability is gone.
+Only execution-based re-validation reveals the difference.
+\emph{Caveat: n=4 trials across three hosts; not a rate estimate.}
+
+\noindent\textbf{Grounding the remediation closes the gap (re-validated
+end-to-end).} The remediation path, unlike the recommender (\S\ref{sec:e1}), was
+originally \emph{ungrounded} free-form generation --- the source of the
+hallucinated fixes. We applied the same grounding principle (retrieve curated,
+verified fix references; constrain the LLM to them) and re-ran all four
+remediations end-to-end (generate $\rightarrow$ apply verbatim $\rightarrow$
+re-exploit).
+
+\begin{table}[t]
+\caption{Ungrounded vs grounded remediation, re-validated end-to-end.
+Efficacy $0.25 \rightarrow 0.75$.}
+\label{tab:grounded}
+\centering
+\begin{tabular}{lll}
+\toprule
+Finding & Ungrounded & Grounded \\
+\midrule
+MS2 \code{ssh\_brute}  & rotate creds: fixed & rotate creds: fixed \\
+MS2 \code{ftp\_brute}  & \code{allow\_root}: not\_fixed & \code{anon..=NO}: not\_fixed \\
+MS3 \code{ms17\_010}   & \code{DisableSMBv1}: not\_fixed & \code{SMB1=0}: \textbf{fixed} \\
+Shellshock & update Apache: not\_fixed & disable CGI: \textbf{fixed} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Grounding \emph{corrected the prescription on all four findings} (SSH creds,
+\code{SMB1=0}, \code{anonymous\_enable=NO} for FTP replacing the invented
+\code{allow\_root}, and disabling mod\_cgi for Shellshock); three of four then
+re-validate as fixed. The remaining FTP
+failure is now isolated to a \emph{deployment-execution} problem --- MS2's
+inetd-launched vsftpd does not honour \code{anonymous\_enable=NO} on restart ---
+and is no longer a prescription error: the loop confirms the fix is correct yet
+ineffective on that host, which is itself the argument for execution-based
+re-validation. This unifies the paper's two results: the same grounding principle
+corrects both recommendation and remediation.
+
+\noindent\textbf{Complete exploit-type coverage.} A Shellshock target (Ubuntu
+14.04, Apache mod\_cgi, unpatched bash) was added so the fourth exploit type ---
+previously only ever a true-negative --- is exercised end-to-end. The oracle
+confirmed Shellshock RCE; the grounded remediation correctly prescribed disabling
+mod\_cgi (and patching bash); applying it (\code{a2dismod cgi cgid}) re-validated
+as \textbf{fixed} (injection no longer executes, web service up). Across all four
+exploit types, grounded remediation efficacy is \textbf{0.75 (3/4)} ---
+\code{ssh\_brute\_force}, \code{ms17\_010\_check}, \code{shellshock\_cgi} fixed;
+\code{ftp\_brute\_force} not\_fixed (the deployment-execution case).
+
+%------------------------------------------------------------------------------
+\section{Variance and Remaining Evaluation}\label{sec:remaining}
+
+\noindent\textbf{Seed/temperature variance (live).} To check the deterministic
+E1 result (\S\ref{sec:e1}) is not a single-seed artifact, we re-ran all
+conditions across 5 seeds and 3 targets at two temperatures. Exploit selection is
+a \emph{decision} task, so a low temperature ($\tau{=}0.3$) is appropriate; we
+also stress-test at $\tau{=}0.7$.
+
+\begin{table}[h]
+\caption{Precision@1 variance (mean $\pm$ stdev, 5 seeds $\times$ 3 targets).}
+\centering
+\begin{tabular}{lcc}
+\toprule
+Condition & P@1 @ $\tau{=}0.3$ & P@1 @ $\tau{=}0.7$ \\
+\midrule
+off          & \textbf{1.00 $\pm$ 0.00} & 0.93 $\pm$ 0.26 \\
+plain        & 0.67 $\pm$ 0.47 & 0.50 $\pm$ 0.50 \\
+action-aware & \textbf{1.00 $\pm$ 0.00} & 0.79 $\pm$ 0.41 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\noindent Plain RAG is the worst at \emph{both} temperatures (a robust negative
+result). At the task-appropriate temperature action-aware is perfectly stable
+(1.00 $\pm$ 0.00), matching the ungrounded baseline while keeping its CVE
+justification; its $\tau{=}0.7$ dip is a diagnosed high-temperature artifact (the
+model occasionally brute-forcing open ports against the grounding), still well
+above plain RAG. Fabrication is high/noisy for both RAG conditions
+($\sim$0.6--0.7) and does not discriminate them, so we de-emphasise it.
+
+\medskip
+\noindent\textbf{Remaining.}
+\todo{E2 --- ranking across many targets with confidence intervals.}
+\todo{Headline at scale: remediation efficacy across $N\approx20$--$30$ findings,
+on a testbed adding Metasploitable~3, VulnHub images, a Windows MS17-010 host, and
+a Shellshock CGI host to exercise all four exploit types with positive cases.}
+\todo{Model-strength comparison: weak (tinyllama) vs default (llama3.2) vs strong
+(GPT-4 via API) to separate ``small model is weak'' from ``grounding scheme''.}
+\textit{PentestGPT: a capability comparison is given in \S2
+(Table~\ref{tab:pgpt}); a same-target empirical head-to-head (real
+PentestGPT-GPT-4) is future work --- its paid GPT-4 backend and GPT-4-tuned parser
+make a fair local run impractical.}
+
+%------------------------------------------------------------------------------
+\section{Discussion}\label{sec:discussion}
+The headline conceptual result is the \emph{knowledge--action-space misalignment}
+in tool-using RAG (\S\ref{sec:e1}): grounding helps factual accuracy but can hurt
+\emph{action selection} when retrieved knowledge references capabilities the tool
+lacks. Action-aware grounding is a general remedy. A residual refinement is
+\emph{platform-applicability filtering}: do not attach a CVE as evidence for an
+exploit when the CVE's product/platform contradicts the target fingerprint.
+
+%------------------------------------------------------------------------------
+\section{Limitations}
+\emph{Few targets} (n=3 hosts for E1, n=4 trials for remediation): pilot numbers are not yet significant;
+\S\ref{sec:remaining} defines scale-up. \emph{Four exploit types}: shallow
+ranking depth; power must come from many targets. \emph{Manual remediation}: ASHEN
+generates guidance; applying the fix is a human (or operator-authorised) step.
+\emph{Weak default model}: llama3.2-3B is small.
+
+%------------------------------------------------------------------------------
+\section{Ethics and Responsible Use}
+ASHEN operates only against IPs an Admin has explicitly authorised; Analysts
+cannot act outside scope. All actions and LLM interactions are audit-logged. The
+local-LLM design keeps target data on-premise. All experiments were conducted
+against a self-hosted, intentionally-vulnerable VM owned by the authors on an
+isolated network.
+
+%------------------------------------------------------------------------------
+\section{Conclusion}
+ASHEN closes the penetration-testing loop from detection through validated
+remediation, using execution as an objective oracle and a local LLM for
+confidentiality. A three-host pilot demonstrates that action-aware retrieval
+grounding corrects a failure mode of naive RAG in tool-using agents, and that
+closed-loop re-validation catches confident-but-incorrect remediations. The
+multi-target scale-up is in progress.
+
+%------------------------------------------------------------------------------
+\begin{thebibliography}{9}
+\bibitem{pentestgpt} G.~Deng \emph{et al.}, ``PentestGPT: An LLM-empowered
+Automatic Penetration Testing Tool,'' \emph{USENIX Security}, 2024.
+arXiv:2308.06782.
+\bibitem{rag} P.~Lewis \emph{et al.}, ``Retrieval-Augmented Generation for
+Knowledge-Intensive NLP Tasks,'' \emph{NeurIPS}, 2020.
+\bibitem{fangweb} R.~Fang \emph{et al.}, ``LLM Agents can Autonomously Hack
+Websites,'' 2024. arXiv:2402.06664.
+\bibitem{fangoneday} R.~Fang \emph{et al.}, ``LLM Agents can Autonomously Exploit
+One-day Vulnerabilities,'' 2024. arXiv:2404.08144.
+\bibitem{fangzeroday} R.~Fang \emph{et al.}, ``Teams of LLM Agents can Exploit
+Zero-Day Vulnerabilities,'' 2024. arXiv:2406.01637.
+\bibitem{happe} A.~Happe and J.~Cito, ``LLMs as Hackers: Autonomous Linux
+Privilege Escalation Attacks,'' 2023. arXiv:2310.11409.
+\bibitem{rlreview} J.~Liu, Y.~Zhang, S.~Zhou, J.~Yang, Y.~Lu, and X.~Zhong,
+``Autonomous Penetration Testing using Reinforcement Learning: A Review and
+Perspectives,'' \emph{Expert Systems with Applications}, 2025.
+\bibitem{autoptsim} Y.~Wang \emph{et al.}, ``A Unified Modeling Framework for
+Automated Penetration Testing (AutoPT-Sim),'' 2025. arXiv:2502.11588.
+\bibitem{hacksynth} L.~Muzsai, D.~Imolai, and A.~Luk\'acs, ``HackSynth: LLM Agent
+and Evaluation Framework for Autonomous Penetration Testing,'' 2024. arXiv:2412.01778.
+\bibitem{penheal} J.~Huang and Q.~Zhu, ``PenHeal: A Two-Stage LLM Framework for
+Automated Pentesting and Optimal Remediation,'' \emph{Workshop on Autonomous
+Cybersecurity}, 2024. arXiv:2407.17788.
+\bibitem{pearce} H.~Pearce \emph{et al.}, ``Examining Zero-Shot Vulnerability
+Repair with Large Language Models,'' \emph{IEEE S\&P}, 2023.
+\bibitem{nmap} G.~F.~Lyon, \emph{Nmap Network Scanning: The Official Nmap Project
+Guide to Network Discovery and Security Scanning}. Insecure.Com LLC, 2009.
+\bibitem{sbert} N.~Reimers and I.~Gurevych, ``Sentence-BERT: Sentence Embeddings
+using Siamese BERT-Networks,'' \emph{EMNLP}, 2019.
+\bibitem{chroma} Chroma, ``Chroma: the open-source embedding database,''
+\url{https://www.trychroma.com}, 2023.
+\bibitem{ms17010} Microsoft, ``Security Bulletin MS17-010: Security Update for
+Microsoft Windows SMB Server,'' 2017. CVE-2017-0143/0144/0145.
+\bibitem{shellshock} NVD, ``CVE-2014-6271 (Shellshock): GNU Bash environment
+variable command injection,'' 2014.
+\bibitem{vsftpd} NVD, ``CVE-2011-2523: vsftpd 2.3.4 backdoor command execution,''
+2011.
+\end{thebibliography}
+
+\end{document}

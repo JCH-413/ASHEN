@@ -56,6 +56,14 @@ def override_db():
     app.dependency_overrides.clear()
 
 
+@pytest.fixture(autouse=True)
+def reset_rate_limits():
+    """Clear rate-limit buckets before each test so counts don't bleed across tests."""
+    from app.core.rate_limit import reset_rate_limits as _reset
+    _reset()
+    yield
+
+
 @pytest.fixture
 def client():
     """Fresh TestClient instance."""

@@ -1,0 +1,10 @@
+ip,name,condition,relevant,ranked,top1,precision_at_1,reciprocal_rank,cited_cves,fabrication_rate
+192.168.28.130,metasploitable2,off,ftp_brute_force|ssh_brute_force,ftp_brute_force|ssh_brute_force|shellshock_cgi|ms17_010_check,ftp_brute_force,1.0,1.0,,
+192.168.28.130,metasploitable2,plain,ftp_brute_force|ssh_brute_force,ms17_010_check|shellshock_cgi,ms17_010_check,0.0,0.0,CVE-2007-2447|CVE-2017-7494|CVE-2017-0144|CVE-2011-2523|CVE-2015-0240,0.6
+192.168.28.130,metasploitable2,action_aware,ftp_brute_force|ssh_brute_force,ssh_brute_force|ftp_brute_force|ms17_010_check,ssh_brute_force,1.0,1.0,CVE-2017-0144,1.0
+192.168.28.133,shellshock-ubuntu1404,off,shellshock_cgi,shellshock_cgi,shellshock_cgi,1.0,1.0,,
+192.168.28.133,shellshock-ubuntu1404,plain,shellshock_cgi,shellshock_cgi,shellshock_cgi,1.0,1.0,CVE-2014-7169|CVE-2014-6271|CVE-2021-41773|CVE-2008-0166|CVE-2006-5051,0.6
+192.168.28.133,shellshock-ubuntu1404,action_aware,shellshock_cgi,shellshock_cgi|ssh_brute_force,shellshock_cgi,1.0,1.0,CVE-2014-6271|CVE-2014-7169|CVE-2021-41773|CVE-2008-0166,0.5
+192.168.28.132,metasploitable3-win2k8,off,ms17_010_check,ms17_010_check|ssh_brute_force|ftp_brute_force,ms17_010_check,1.0,1.0,,
+192.168.28.132,metasploitable3-win2k8,plain,ms17_010_check,ms17_010_check|ssh_brute_force|ftp_brute_force,ms17_010_check,1.0,1.0,,
+192.168.28.132,metasploitable3-win2k8,action_aware,ms17_010_check,ms17_010_check|ssh_brute_force|ftp_brute_force|shellshock_cgi,ms17_010_check,1.0,1.0,,

@@ -1,0 +1,82 @@
+{
+  "generated": "2026-06-11T22:39:59.171922+00:00",
+  "targets": [
+    {
+      "ip": "192.168.56.101",
+      "name": "metasploitable2",
+      "relevant": [
+        "ftp_brute_force",
+        "ssh_brute_force"
+      ],
+      "conditions": [
+        {
+          "use_rag": false,
+          "ranked": [
+            "ms17_010_check",
+            "ssh_brute_force",
+            "ftp_brute_force"
+          ],
+          "cited_cves": [],
+          "precision_at_1": 0.0,
+          "reciprocal_rank": 0.5,
+          "fabrication_rate": null,
+          "recommendation": "Exploitation Order:\n\n1.Based on the provided information, here are the exploits that match open ports, ordered by priority:\n\n1. 3, 445, ms17_010_check, Samba/SMB, MS17-010 candidate\n2. 1, 22, ssh_brute_force, OpenSSH 4.7p1, weak/default credentials\n3. 2, 21, ftp_brute_force, vsftpd 2.3.4 backdoor, weak credentials\n\nNote: The priority is based on the severity of the vulnerability, with critical/high being first, followed by medium, and then low."
+        },
+        {
+          "use_rag": true,
+          "ranked": [
+            "ms17_010_check",
+            "ftp_brute_force",
+            "ssh_brute_force"
+          ],
+          "cited_cves": [],
+          "precision_at_1": 0.0,
+          "reciprocal_rank": 0.5,
+          "fabrication_rate": null,
+          "recommendation": "Exploitation Order:\n\n1.Here are the exploits that match open ports, ordered by priority:\n\n1. 1, Port 445, ms17_010_check, MS17-010 candidate vulnerability on Samba/SMB, high severity\n2. 2, Port 21, ftp_brute_force, ProFTPD mod_copy vulnerability, high severity\n3. 3, Port 22, ssh_brute_force, OpenSSH 4.7p1, weak/default credentials, high severity"
+        }
+      ],
+      "remediations": []
+    },
+    {
+      "ip": "192.168.56.102",
+      "name": "shellshock-host",
+      "relevant": [
+        "shellshock_cgi"
+      ],
+      "conditions": [
+        {
+          "use_rag": false,
+          "ranked": [
+            "shellshock_cgi"
+          ],
+          "cited_cves": [
+            "CVE-2014-6271"
+          ],
+          "precision_at_1": 1.0,
+          "reciprocal_rank": 1.0,
+          "fabrication_rate": 0.0,
+          "recommendation": "Exploitation Order:\n\n1.Based on the provided information, here are the exploits that match open ports, ordered by priority:\n\n1. 3, 80, http-apache-cgi, Critical: Apache mod_cgi and Bash Shellshock (CVE-2014-6271) due to the presence of port 80.\n\n2. 2, 80, shellshock_cgi, Medium: Bash Shellshock (CVE-2014-6271) as it is a related exploit for port 80.\n\nNote that there are no other exploits that match open ports with medium or low severity."
+        },
+        {
+          "use_rag": true,
+          "ranked": [
+            "shellshock_cgi",
+            "ms17_010_check"
+          ],
+          "cited_cves": [
+            "CVE-2014-6271",
+            "CVE-2020-0796",
+            "CVE-1999-0236",
+            "CVE-2021-41773"
+          ],
+          "precision_at_1": 1.0,
+          "reciprocal_rank": 1.0,
+          "fabrication_rate": 0.75,
+          "recommendation": "Exploitation Order:\n\n1.Based on the provided information, here are the exploits that match open ports, ordered by priority:\n\n1. 1 | Port 80 | Apache mod_cgi, Bash Shellshock (CVE-2014-6271) - Critical\n2. 1 | Port 445 | SMBGhost vulnerability (CVE-2020-0796) - Critical\n3. 2 | Port 80 | ScriptAlias directory in NCSA and Apache httpd (CVE-1999-0236) - High\n4. 2 | Port 443 | Apache HTTP Server path traversal (CVE-2021-41773) - High"
+        }
+      ],
+      "remediations": []
+    }
+  ]
+}

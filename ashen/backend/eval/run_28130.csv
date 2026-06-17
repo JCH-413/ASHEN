@@ -1,0 +1,3 @@
+ip,name,use_rag,relevant,ranked,top1,precision_at_1,reciprocal_rank,cited_cves,fabrication_rate
+192.168.28.130,metasploitable2,False,ftp_brute_force|ssh_brute_force,ftp_brute_force|ssh_brute_force|shellshock_cgi|ms17_010_check,ftp_brute_force,1.0,1.0,,
+192.168.28.130,metasploitable2,True,ftp_brute_force|ssh_brute_force,ms17_010_check,ms17_010_check,0.0,0.0,CVE-2020-0796|CVE-2018-10933|CVE-2015-3306|CVE-1999-1237,1.0

@@ -2,12 +2,26 @@ import { PageShell } from "@/components/PageShell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Plus, Loader2, RefreshCw } from "lucide-react";
+import { Plus, Loader2, RefreshCw, Trash2 } from "lucide-react";
 import { useState, useEffect, useCallback } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { EmptyState } from "@/components/EmptyState";
 import { admin as adminApi, TargetItem, ApiError } from "@/lib/api";
+
+function validateIp(value: string): string | null {
+  const v = value.trim();
+  if (!v) return "IP address is required";
+  const ipv4 = /^(\d{1,3}\.){3}\d{1,3}$/;
+  if (ipv4.test(v)) {
+    const parts = v.split(".").map(Number);
+    if (parts.every((p) => p >= 0 && p <= 255)) return null;
+    return "Invalid IPv4 address (octets must be 0-255)";
+  }
+  const ipv6 = /^([0-9a-fA-F]{0,4}:){2,7}[0-9a-fA-F]{0,4}$/;
+  if (ipv6.test(v) || v === "::1") return null;
+  return "Invalid IP address. Enter a valid IPv4 or IPv6 address.";
+}
 
 const AdminTargets = () => {
   const { toast } = useToast();
@@ -25,25 +39,45 @@ const AdminTargets = () => {
   // Add target dialog
   const [showAdd, setShowAdd] = useState(false);
   const [newIp, setNewIp] = useState("");
+  const [newIpError, setNewIpError] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
+  const [deletingTargetId, setDeletingTargetId] = useState<number | null>(null);
+
+  const handleIpChange = (value: string) => {
+    setNewIp(value);
+    setNewIpError(value.trim() ? validateIp(value) : null);
+  };
 
   const handleAdd = async () => {
-    if (!newIp.trim()) {
-      toast({ title: "Error", description: "Enter an IP address.", variant: "destructive" });
-      return;
-    }
+    const err = validateIp(newIp);
+    if (err) { setNewIpError(err); return; }
     setAdding(true);
     try {
       const res = await adminApi.addTarget(newIp.trim());
       toast({ title: "Target Added", description: res.message });
       setShowAdd(false);
       setNewIp("");
+      setNewIpError(null);
       fetchTargets();
     } catch (e) {
       const msg = e instanceof ApiError ? e.message : "Failed to add target";
       toast({ title: "Error", description: msg, variant: "destructive" });
     } finally {
       setAdding(false);
+    }
+  };
+
+  const handleDelete = async (target: TargetItem) => {
+    setDeletingTargetId(target.target_id);
+    try {
+      const res = await adminApi.deleteTarget(target.target_id);
+      toast({ title: "Target Removed", description: res.message });
+      fetchTargets();
+    } catch (e) {
+      const msg = e instanceof ApiError ? e.message : "Failed to remove target";
+      toast({ title: "Error", description: msg, variant: "destructive" });
+    } finally {
+      setDeletingTargetId(null);
     }
   };
 
@@ -57,12 +91,19 @@ const AdminTargets = () => {
           <div className="space-y-4 py-2">
             <div className="space-y-1">
               <Label>IP Address</Label>
-              <Input value={newIp} onChange={(e) => setNewIp(e.target.value)} placeholder="e.g., 192.168.1.100" disabled={adding} />
+              <Input
+                value={newIp}
+                onChange={(e) => handleIpChange(e.target.value)}
+                placeholder="e.g., 192.168.1.100"
+                disabled={adding}
+                className={newIpError ? "border-destructive" : ""}
+              />
+              {newIpError && <p className="text-xs text-destructive">{newIpError}</p>}
             </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowAdd(false)} disabled={adding}>Cancel</Button>
-            <Button onClick={handleAdd} disabled={adding}>
+            <Button onClick={handleAdd} disabled={adding || !!newIpError}>
               {adding ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
               Authorize
             </Button>
@@ -89,7 +130,7 @@ const AdminTargets = () => {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-border bg-muted/50">
-                {["ID", "IP Address", "Authorized", "Created"].map((h) => (
+                {["ID", "IP Address", "Authorized", "Created", "Action"].map((h) => (
                   <th key={h} className="text-left p-3 font-medium">{h}</th>
                 ))}
               </tr>
@@ -105,6 +146,18 @@ const AdminTargets = () => {
                     </span>
                   </td>
                   <td className="p-3 text-muted-foreground text-xs">{new Date(t.created_at).toLocaleString()}</td>
+                  <td className="p-3">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="gap-1"
+                      onClick={() => handleDelete(t)}
+                      disabled={deletingTargetId === t.target_id}
+                    >
+                      {deletingTargetId === t.target_id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Trash2 className="h-3 w-3" />}
+                      Remove
+                    </Button>
+                  </td>
                 </tr>
               ))}
             </tbody>
