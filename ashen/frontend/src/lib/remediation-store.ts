@@ -8,6 +8,7 @@
  */
 
 import { ai as aiApi, ApiError } from "./api";
+import { addNotification } from "./notifications-store";
 
 // ── Types ──────────────────────────────────────────────────────────
 
@@ -129,7 +130,7 @@ function createStore() {
         generating: true,
         guidance: "",
         reviewAction: "",
-        model: "tinyllama",
+        model: "",
         generatedAt: new Date().toISOString(),
         lastError: "",
       });
@@ -144,8 +145,18 @@ function createStore() {
             state = { ...state, guidance: state.guidance + token };
             emit();
           },
+          (model) => update({ model }),
         );
         update({ guidance: full, generating: false });
+        const anchor = state.selectedExploitId
+          ? `exploit E-${state.selectedExploitId}`
+          : `vulnerability #${state.selectedVulnId}`;
+        addNotification({
+          id: `remediation-${state.selectedExploitId || "v" + state.selectedVulnId}-${state.generatedAt}`,
+          type: "remediation",
+          message: `Remediation guidance ready for ${anchor}`,
+          ts: Date.now(),
+        });
       } catch (e) {
         const msg =
           e instanceof ApiError

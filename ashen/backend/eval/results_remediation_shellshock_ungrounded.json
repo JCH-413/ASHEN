@@ -1,0 +1,10 @@
+{
+  "generated": "2026-06-15T07:47:29.695730+00:00",
+  "host": "192.168.28.136",
+  "exploit_type": "shellshock_cgi",
+  "applied_fix": "update Apache mod_cgi (per ungrounded remediation; wrong component \u2014 shellshock is a bash bug)",
+  "vuln_before": true,
+  "vuln_after": true,
+  "service_up_after": true,
+  "outcome": "not_fixed"
+}

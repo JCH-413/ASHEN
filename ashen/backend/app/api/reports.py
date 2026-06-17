@@ -8,6 +8,7 @@ from fastapi.responses import HTMLResponse, PlainTextResponse
 from sqlalchemy.orm import Session
 from app.core.db import get_db
 from app.core.security import get_current_user
+from app.core.authz import require_action
 from app.models.report import Report
 from app.models.scan import Scan
 from app.utils.logging_utils import create_audit_log
@@ -26,6 +27,8 @@ def generate_report(
     body: ReportGenerateRequest,
     db: Session = Depends(get_db),
     current_payload: dict = Depends(get_current_user),
+    # Close the drift: Analyst-only + rate limit — see authz.py
+    _guard: dict = Depends(require_action(actor="Analyst", rate="report")),
 ):
     scan = db.query(Scan).filter(Scan.scan_id == body.scan_id).first()
     if not scan:

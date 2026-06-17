@@ -1,0 +1,102 @@
+{
+  "valid_cves": [
+    "CVE-2011-2523",
+    "CVE-2008-0166",
+    "CVE-2007-2447",
+    "CVE-2011-3192"
+  ],
+  "targets": [
+    {
+      "ip": "192.168.28.130",
+      "name": "metasploitable2",
+      "relevant": [
+        "ftp_brute_force",
+        "ssh_brute_force"
+      ],
+      "oracle": {
+        "ftp_brute_force": {
+          "exploit_type": "ftp_brute_force",
+          "tool": "hydra",
+          "port": 21,
+          "ran": true,
+          "vulnerable": true,
+          "summary": "Credentials found \u2014 msfadmin:msfadmin"
+        },
+        "ssh_brute_force": {
+          "exploit_type": "ssh_brute_force",
+          "tool": "metasploit",
+          "port": 22,
+          "ran": true,
+          "vulnerable": true,
+          "summary": "Credentials found \u2014 msfadmin:msfadmin"
+        },
+        "ms17_010_check": {
+          "exploit_type": "ms17_010_check",
+          "tool": "metasploit",
+          "port": 445,
+          "ran": true,
+          "vulnerable": false,
+          "summary": "Host is NOT vulnerable to MS17-010"
+        },
+        "shellshock_cgi": {
+          "exploit_type": "shellshock_cgi",
+          "tool": "curl",
+          "port": 80,
+          "ran": true,
+          "vulnerable": false,
+          "summary": "No Shellshock vulnerability found"
+        }
+      },
+      "conditions": [
+        {
+          "condition": "off",
+          "ranked": [
+            "ftp_brute_force",
+            "ssh_brute_force",
+            "shellshock_cgi",
+            "ms17_010_check"
+          ],
+          "cited_cves": [],
+          "precision_at_1": 1.0,
+          "reciprocal_rank": 1.0,
+          "fabrication_rate": null,
+          "recommendation": "Exploitation Order:\n\n1.Based on the provided scan results and available exploits, here are the matches ordered by priority:\n\n1. 1, Port 21, ftp_brute_force, Severity: high - vsftpd 2.3.4, weak/default credentials\n2. 1, Port 22, ssh_brute_force, Severity: high - OpenSSH 4.7p1 Debian, weak/default credentials\n3. 2, Port 80, shellshock_cgi, Severity: medium - Apache httpd 2.2.8 (Ubuntu) DAV/2, possible CGI\n4. 2, Port 139, ms17_010_check, Severity: medium - Samba smbd 3.x\n5. 2, Port 445, ms17_010_check, Severity: medium - Samba smbd 3.x (SMB)\n\nNote that the same exploit can be used for multiple ports if they have the same vulnerability and severity. In this case, 'ms17_010_check' is used for both port 139 and port 445 as they are related to the same vulnerability."
+        },
+        {
+          "condition": "plain",
+          "ranked": [
+            "ms17_010_check",
+            "shellshock_cgi"
+          ],
+          "cited_cves": [
+            "CVE-2007-2447",
+            "CVE-2017-7494",
+            "CVE-2017-0144",
+            "CVE-2011-2523",
+            "CVE-2015-0240"
+          ],
+          "precision_at_1": 0.0,
+          "reciprocal_rank": 0.0,
+          "fabrication_rate": 0.6,
+          "recommendation": "Exploitation Order:\n\n1.Here are the exploits that match open ports, ordered by priority:\n\n1. Critical - Port 445 | netbios-ssn | ms17_010_check | Affects Windows hosts only; not Linux Samba.\n2. Critical - Port 139 | netbios-ssn | CVE-2007-2447 | Samba 3.0.x: Samba 3.0.0 through 3.0.25rc3 'username map script' command injection allows unauthenticated remote command execution via shell metacharacters in the username.\n3. Critical - Port 445 | netbios-ssn | CVE-2017-7494 | SambaCry: Samba 3.5.0 through 4.x allows a writable-share client to upload and load a shared library, achieving remote code execution on Linux Samba servers.\n4. Critical - Port 22 | ssh-openssh | CVE-2017-0144 | Microsoft Windows SMBv1: EternalBlue (MS17-010): a remote code execution flaw in Microsoft Windows SMBv1.\n5. High - Port 21 | ftp-vsftpd | CVE-2011-2523 | vsftpd 2.3.4 contains a backdoor: a username ending in ':)' opens a command shell on TCP 6200, allowing unauthenticated remote command execution.\n6. Medium - Port 80 | http-apache | shellshock_cgi | Apache httpd 2.2.8 (Ubuntu) DAV/2, possible CGI\n7. Medium - Port 139 | netbios-ssn | CVE-2015-0240 | Samba 3.5: Uninitialized pointer in the Samba smbd netlogon server (3.5.x-4.x) allows unauthenticated remote code execution.\n8. Medium - Port 445 | netbios-ssn | CVE-2007-2447 | Samba 3.0.x: Samba 3.0.0 through 3.0.25rc3 'username map script' command injection allows unauthenticated remote command execution via shell metacharacters in the username.\n\nNote that I've excluded Port 22 from the list because it's not a direct match for the available exploit types, and instead used the relevant CVE-2017-0144 exploit."
+        },
+        {
+          "condition": "action_aware",
+          "ranked": [
+            "ssh_brute_force",
+            "ftp_brute_force",
+            "ms17_010_check"
+          ],
+          "cited_cves": [
+            "CVE-2017-0144"
+          ],
+          "precision_at_1": 1.0,
+          "reciprocal_rank": 1.0,
+          "fabrication_rate": 1.0,
+          "recommendation": "Exploitation Order:\n\n1.Based on the scan findings, I recommend the following exploits:\n\n1. 1, 22, ssh_brute_force, Weak default credentials for OpenSSH 4.7p1 Debian service.\n2. 1, 21, ftp_brute_force, Weak default credentials for vsftpd 2.3.4 service.\n3. 1, 445, ms17_010_check, Vulnerability CVE-2017-0144 in Samba smbd 3.x service.\n\nThese exploits are recommended because they target services with confirmed weaknesses and vulnerabilities as identified by the scan findings."
+        }
+      ],
+      "remediations": []
+    }
+  ]
+}

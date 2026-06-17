@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 from datetime import datetime
 from app.core.db import get_db
 from app.core.security import get_current_user
+from app.core.authz import require_action
 from app.models.vulnerability import Vulnerability
 from app.models.scan import Scan
 from app.models.exploit import Exploit
@@ -54,9 +55,20 @@ def _build_vuln_context(db: Session, scan_id: int, vuln_id: int = None) -> str:
 
 
 def _build_rich_remediation_context(db: Session, vuln_id=None, exploit_id=None, description=None) -> str:
-    """Build concise context for remediation — enough for the LLM to reason,
-    short enough that smaller models do not echo it back."""
+    """Build concise, coherent remediation context.
+
+    When an exploit is supplied, the remediation is anchored on that exploit's
+    OWN vulnerability (`exploit.vuln_id`); a separately-passed, mismatched
+    `vuln_id` is ignored. This prevents fusing an unrelated vulnerability and
+    exploit into one prompt (e.g. a Slowloris finding with a Shellshock exploit).
+    """
     parts = []
+
+    exploit = None
+    if exploit_id:
+        exploit = db.query(Exploit).filter(Exploit.exploit_id == exploit_id).first()
+        if exploit and exploit.vuln_id:
+            vuln_id = exploit.vuln_id  # authoritative: the vuln the exploit ran against
 
     vuln = None
     if vuln_id:
@@ -83,11 +95,9 @@ def _build_rich_remediation_context(db: Session, vuln_id=None, exploit_id=None, 
                 if scan and scan.target:
                     parts.append(f"Target: {scan.target.ip_address}")
 
-    if exploit_id:
-        exploit = db.query(Exploit).filter(Exploit.exploit_id == exploit_id).first()
-        if exploit:
-            parts.append(f"Exploit: {exploit.exploit_type} via {exploit.tool_used}")
-            parts.append(f"Result: {exploit.status}" + (f" — {exploit.result_summary[:200]}" if exploit.result_summary else ""))
+    if exploit:
+        parts.append(f"Exploit: {exploit.exploit_type} via {exploit.tool_used}")
+        parts.append(f"Result: {exploit.status}" + (f" — {exploit.result_summary[:200]}" if exploit.result_summary else ""))
 
     if description:
         parts.append(f"Context: {description}")
@@ -148,6 +158,11 @@ def ai_recommend_attacks(
     body: AttackRecommendRequest,
     db: Session = Depends(get_db),
     current_payload: dict = Depends(get_current_user),
+    _guard: dict = Depends(require_action(
+        actor="Analyst",
+        scan_target_from=lambda d: d.get("scan_id"),
+        rate="ai",
+    )),
 ):
     scan = db.query(Scan).filter(Scan.scan_id == body.scan_id).first()
     if not scan:
@@ -177,6 +192,11 @@ def ai_recommend_attacks_stream(
     body: AttackRecommendRequest,
     db: Session = Depends(get_db),
     current_payload: dict = Depends(get_current_user),
+    _guard: dict = Depends(require_action(
+        actor="Analyst",
+        scan_target_from=lambda d: d.get("scan_id"),
+        rate="ai",
+    )),
 ):
     scan = db.query(Scan).filter(Scan.scan_id == body.scan_id).first()
     if not scan:
@@ -200,7 +220,7 @@ def ai_recommend_attacks_stream(
 
         log_event(context, full_response, action="attack_recommendation")
         create_audit_log(db, f"AI attack recommendation generated for scan {body.scan_id}", email)
-        yield _sse_event("", event="done")
+        yield _sse_event(_active_model_name(), event="done")
 
     return StreamingResponse(generate_sse(), media_type="text/event-stream")
 
@@ -212,6 +232,7 @@ def ai_remediate(
     body: RemediationRequest,
     db: Session = Depends(get_db),
     current_payload: dict = Depends(get_current_user),
+    _guard: dict = Depends(require_action(actor="Analyst", rate="ai")),
 ):
     context = _build_rich_remediation_context(
         db,
@@ -253,6 +274,7 @@ def ai_remediate_stream(
     body: RemediationRequest,
     db: Session = Depends(get_db),
     current_payload: dict = Depends(get_current_user),
+    _guard: dict = Depends(require_action(actor="Analyst", rate="ai")),
 ):
     context = _build_rich_remediation_context(
         db,
@@ -282,7 +304,7 @@ def ai_remediate_stream(
         # Log after completion
         log_event(context, full_response, action="remediation_guidance")
         create_audit_log(db, f"AI remediation generated (vuln_id={body.vuln_id}, exploit_id={body.exploit_id})", email)
-        yield _sse_event("", event="done")
+        yield _sse_event(_active_model_name(), event="done")
 
     return StreamingResponse(generate_sse(), media_type="text/event-stream")
 
@@ -292,6 +314,7 @@ def ai_chat_stream(
     body: AIChatRequest,
     db: Session = Depends(get_db),
     current_payload: dict = Depends(get_current_user),
+    _guard: dict = Depends(require_action(actor="Analyst", rate="ai")),
 ):
     context_parts = []
 
@@ -338,6 +361,7 @@ def ai_review(
     vuln_id: int = None,
     db: Session = Depends(get_db),
     current_payload: dict = Depends(get_current_user),
+    _guard: dict = Depends(require_action(actor="Analyst", rate="ai")),
 ):
     email = current_payload.get("sub", "unknown")
     valid_actions = ("accept", "reject", "regenerate")
@@ -368,6 +392,7 @@ def ai_chat(
     body: AIChatRequest,
     db: Session = Depends(get_db),
     current_payload: dict = Depends(get_current_user),
+    _guard: dict = Depends(require_action(actor="Analyst", rate="ai")),
 ):
     context_parts = []
 

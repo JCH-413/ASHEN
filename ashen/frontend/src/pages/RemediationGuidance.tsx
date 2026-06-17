@@ -48,10 +48,13 @@ const RemediationGuidance = () => {
   const prevGeneratingRef = useRef(store.generating);
   useEffect(() => {
     if (prevGeneratingRef.current && !store.generating && store.guidance && !store.lastError) {
-      toast({ title: "Remediation Generated", description: "Model: tinyllama" });
+      toast({
+        title: "Remediation Generated",
+        description: store.model ? `Model: ${store.model}` : undefined,
+      });
     }
     prevGeneratingRef.current = store.generating;
-  }, [store.generating, store.guidance, store.lastError, toast]);
+  }, [store.generating, store.guidance, store.lastError, store.model, toast]);
 
   // Auto-scroll chat
   useEffect(() => {
@@ -83,6 +86,19 @@ const RemediationGuidance = () => {
     setChatInput("");
   };
 
+  // Remediation is exploit-driven: the vulnerability is derived from the chosen
+  // exploit (exploit.vuln_id), so an unrelated vuln can never be paired with it.
+  const selectedExploit = allExploits.find((e) => String(e.exploit_id) === store.selectedExploitId);
+  const derivedVuln = selectedExploit?.vuln_id != null
+    ? allVulns.find((v) => v.vuln_id === selectedExploit.vuln_id)
+    : undefined;
+
+  const selectExploit = (id: string) => {
+    remediationStore.setSelectedExploitId(id);
+    const ex = allExploits.find((e) => String(e.exploit_id) === id);
+    remediationStore.setSelectedVulnId(ex?.vuln_id != null ? String(ex.vuln_id) : "");
+  };
+
   // ── Render ───────────────────────────────────────────────────────
 
   return (
@@ -92,39 +108,33 @@ const RemediationGuidance = () => {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Remediation Panel - Left 2 cols */}
         <div className="lg:col-span-2 space-y-4">
-          {/* Selectors */}
+          {/* Selector — remediation is exploit-driven; the vulnerability is
+              derived from the chosen exploit so the two can never be mismatched. */}
           <div className="flex items-end gap-4">
             <div className="space-y-1 flex-1">
-              <label className="text-xs font-medium">Vulnerability</label>
-              <Select value={store.selectedVulnId} onValueChange={remediationStore.setSelectedVulnId}>
+              <label className="text-xs font-medium">Exploit run</label>
+              <Select value={store.selectedExploitId} onValueChange={selectExploit}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Select vulnerability..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {allVulns.map((v) => (
-                    <SelectItem key={v.vuln_id} value={String(v.vuln_id)}>
-                      V-{v.vuln_id} — Port {v.port} ({v.severity}) {v.script_id}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1 flex-1">
-              <label className="text-xs font-medium">Exploit</label>
-              <Select value={store.selectedExploitId} onValueChange={remediationStore.setSelectedExploitId}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select exploit..." />
+                  <SelectValue placeholder="Select an exploit run..." />
                 </SelectTrigger>
                 <SelectContent>
                   {allExploits.map((e) => (
                     <SelectItem key={e.exploit_id} value={String(e.exploit_id)}>
-                      E-{e.exploit_id} — {e.exploit_type} ({e.status})
+                      E-{e.exploit_id} — {e.exploit_type} ({e.status}){e.vuln_id != null ? ` → V-${e.vuln_id}` : ""}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
-            <Button onClick={handleGenerate} disabled={store.generating} className="gap-2">
+            <div className="space-y-1 flex-1">
+              <label className="text-xs font-medium">Vulnerability (from exploit)</label>
+              <div className="flex h-10 items-center rounded-md border bg-muted/40 px-3 text-sm text-muted-foreground">
+                {derivedVuln
+                  ? `V-${derivedVuln.vuln_id} — Port ${derivedVuln.port} (${derivedVuln.severity}) ${derivedVuln.script_id}`
+                  : selectedExploit ? "No linked vulnerability" : "Select an exploit"}
+              </div>
+            </div>
+            <Button onClick={handleGenerate} disabled={store.generating || !store.selectedExploitId} className="gap-2">
               {store.generating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Lightbulb className="h-4 w-4" />}
               Generate
             </Button>
@@ -168,7 +178,7 @@ const RemediationGuidance = () => {
               )}
             </div>
           ) : (
-            <EmptyState message="Select a vulnerability or exploit, then click Generate for AI remediation guidance." />
+            <EmptyState message="Select an exploit run, then click Generate for AI remediation guidance for its confirmed finding." />
           )}
         </div>
 

@@ -1,0 +1,35 @@
+{
+  "_comment": "Copy to targets.json and edit for your testbed. valid_cves = CVE ids that are real AND apply to these targets' services (used to score fabrication). expected_vulnerable is only used with --no-exploit for a pipeline dry-run.",
+  "valid_cves": [
+    "CVE-2017-0144",
+    "CVE-2014-6271",
+    "CVE-2015-3306",
+    "CVE-2011-2523"
+  ],
+  "targets": [
+    {
+      "ip": "192.168.56.101",
+      "name": "metasploitable2",
+      "scan_context_lines": [
+        "Port 21 | ftp-vsftpd | Severity: high | vsftpd 2.3.4 backdoor, weak credentials",
+        "Port 22 | ssh | Severity: high | OpenSSH 4.7p1, weak/default credentials",
+        "Port 445 | smb | Severity: critical | Samba/SMB, MS17-010 candidate"
+      ],
+      "findings": [
+        {"port": 21, "exploit_type": "ftp_brute_force", "severity": "high", "description": "FTP allows weak credentials", "expected_vulnerable": true},
+        {"port": 22, "exploit_type": "ssh_brute_force", "severity": "high", "description": "SSH allows weak credentials", "expected_vulnerable": true},
+        {"port": 445, "exploit_type": "ms17_010_check", "severity": "critical", "description": "SMB MS17-010", "expected_vulnerable": false}
+      ]
+    },
+    {
+      "ip": "192.168.56.102",
+      "name": "shellshock-host",
+      "scan_context_lines": [
+        "Port 80 | http-apache-cgi | Severity: critical | Apache mod_cgi, Bash Shellshock (CVE-2014-6271)"
+      ],
+      "findings": [
+        {"port": 80, "exploit_type": "shellshock_cgi", "severity": "critical", "description": "Shellshock via CGI", "expected_vulnerable": true}
+      ]
+    }
+  ]
+}

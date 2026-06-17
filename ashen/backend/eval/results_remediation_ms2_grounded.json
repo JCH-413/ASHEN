@@ -1,0 +1,25 @@
+{
+  "generated": "2026-06-14T19:39:56.432150+00:00",
+  "host": "192.168.28.130",
+  "note": "grounded remediation, applied verbatim",
+  "remediations": [
+    {
+      "exploit_type": "ssh_brute_force",
+      "port": 22,
+      "grounded": true,
+      "vuln_before": true,
+      "vuln_after": false,
+      "service_up_after": true,
+      "outcome": "fixed"
+    },
+    {
+      "exploit_type": "ftp_brute_force",
+      "port": 21,
+      "grounded": true,
+      "vuln_before": true,
+      "vuln_after": true,
+      "service_up_after": true,
+      "outcome": "not_fixed"
+    }
+  ]
+}

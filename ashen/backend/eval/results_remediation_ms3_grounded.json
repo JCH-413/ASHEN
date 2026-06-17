@@ -1,0 +1,11 @@
+{
+  "generated": "2026-06-14T16:47:47.815368+00:00",
+  "host": "192.168.28.132",
+  "exploit_type": "ms17_010_check",
+  "applied_fix": "reg add \"HKLM\\SYSTEM\\CurrentControlSet\\Services\\LanmanServer\\Parameters\" /v SMB1 /t REG_DWORD /d 0 /f",
+  "note": "GROUNDED remediation (SMB1=0), verbatim",
+  "vuln_before": true,
+  "vuln_after": false,
+  "service_up_after": true,
+  "outcome": "fixed"
+}

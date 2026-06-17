@@ -1,3 +1,4 @@
+import json
 import chromadb
 import requests
 import time
@@ -144,6 +145,127 @@ def retrieve_relevant_cves(scan_text: str, top_k: int = 5) -> str:
             f"- {meta['severity'].upper()}: {doc} (ID: {cve_id})"
         )
     return "\n".join(context_parts)
+
+
+def rebuild_from_corpus_file(path: str) -> int:
+    """Replace the cve_knowledge collection with a curated corpus JSON.
+
+    Used to swap the toy seed set for a product-accurate corpus. The product
+    name is prepended to the embedded text so retrieval matches on the
+    fingerprinted software (e.g. "vsftpd 2.3.4"), not just the bare service
+    word. Returns the number of CVEs loaded.
+    """
+    with open(path) as f:
+        cves = json.load(f).get("cves", [])
+
+    collection = chroma_client.get_or_create_collection("cve_knowledge")
+    existing = collection.get()
+    if existing["ids"]:
+        collection.delete(ids=existing["ids"])
+
+    texts = [f"{c.get('product', '')}: {c['description']}" for c in cves]
+    embeddings = embedder.encode(texts).tolist()
+    collection.add(
+        documents=texts,
+        embeddings=embeddings,
+        ids=[c["id"] for c in cves],
+        metadatas=[
+            {
+                "severity": c.get("severity", "unknown"),
+                "service": c.get("service", ""),
+                "product": c.get("product", ""),
+            }
+            for c in cves
+        ],
+    )
+    return len(cves)
+
+
+def retrieve_relevant_cves_structured(scan_text: str, top_k: int = 5) -> list[dict]:
+    """Like retrieve_relevant_cves but returns structured rows.
+
+    Each row is {id, description, service, severity, product} so callers can map
+    retrieved CVEs back to ASHEN's exploit types (action-aware grounding)
+    instead of dumping an opaque string into the prompt.
+    """
+    collection = chroma_client.get_or_create_collection("cve_knowledge")
+    if collection.count() == 0:
+        build_cve_store()
+
+    query_embedding = embedder.encode([scan_text]).tolist()
+    results = collection.query(
+        query_embeddings=query_embedding,
+        n_results=min(top_k, collection.count()),
+    )
+    rows = []
+    for doc, meta, cve_id in zip(
+        results["documents"][0], results["metadatas"][0], results["ids"][0]
+    ):
+        rows.append({
+            "id": cve_id,
+            "description": doc,
+            "service": meta.get("service", ""),
+            "severity": meta.get("severity", "unknown"),
+            "product": meta.get("product", ""),
+        })
+    return rows
+
+
+def rebuild_remediation_store_from_file(path: str) -> int:
+    """Load a curated remediation corpus into the `remediation_knowledge`
+    collection (separate from CVE knowledge). Used to ground the fix-generation
+    step in verified, correct remediation steps. Returns the number loaded.
+    """
+    with open(path) as f:
+        docs = json.load(f).get("remediations", [])
+
+    collection = chroma_client.get_or_create_collection("remediation_knowledge")
+    existing = collection.get()
+    if existing["ids"]:
+        collection.delete(ids=existing["ids"])
+
+    texts = [f"{d.get('title', '')}: {d['text']}" for d in docs]
+    embeddings = embedder.encode(texts).tolist()
+    collection.add(
+        documents=texts,
+        embeddings=embeddings,
+        ids=[d["id"] for d in docs],
+        metadatas=[
+            {
+                "exploit_type": d.get("exploit_type") or "",
+                "service": d.get("service", ""),
+                "source": d.get("source", ""),
+            }
+            for d in docs
+        ],
+    )
+    return len(docs)
+
+
+def retrieve_remediation(query: str, top_k: int = 3) -> list[dict]:
+    """Retrieve curated remediation references relevant to a finding.
+
+    Returns [{id, text, exploit_type, service, source}]. Empty if the store has
+    not been built.
+    """
+    collection = chroma_client.get_or_create_collection("remediation_knowledge")
+    if collection.count() == 0:
+        return []
+
+    q = embedder.encode([query]).tolist()
+    res = collection.query(query_embeddings=q, n_results=min(top_k, collection.count()))
+    rows = []
+    for doc, meta, did in zip(
+        res["documents"][0], res["metadatas"][0], res["ids"][0]
+    ):
+        rows.append({
+            "id": did,
+            "text": doc,
+            "exploit_type": meta.get("exploit_type", ""),
+            "service": meta.get("service", ""),
+            "source": meta.get("source", ""),
+        })
+    return rows
 
 
 def refresh_cve_store():

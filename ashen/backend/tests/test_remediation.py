@@ -191,16 +191,16 @@ Anonymous FTP is enabled.
 
 class TestRemediateEndpoint:
     @patch("app.api.ai.get_remediation")
-    def test_remediate_requires_input(self, mock_remed, client, admin_token):
+    def test_remediate_requires_input(self, mock_remed, client, analyst_token):
         resp = client.post(
             "/ai/remediate",
             json={},
-            headers={"Authorization": f"Bearer {admin_token}"},
+            headers={"Authorization": f"Bearer {analyst_token}"},
         )
         assert resp.status_code == 400
 
     @patch("app.api.ai.get_remediation")
-    def test_remediate_returns_guidance(self, mock_remed, client, admin_token, db):
+    def test_remediate_returns_guidance(self, mock_remed, client, analyst_token, db):
         # Seed a vulnerability
         from app.models.vulnerability import Vulnerability
         v = Vulnerability(
@@ -216,7 +216,7 @@ class TestRemediateEndpoint:
         resp = client.post(
             "/ai/remediate",
             json={"vuln_id": v.vuln_id},
-            headers={"Authorization": f"Bearer {admin_token}"},
+            headers={"Authorization": f"Bearer {analyst_token}"},
         )
         assert resp.status_code == 200
         data = resp.json()
@@ -230,7 +230,7 @@ class TestRemediateEndpoint:
 
 class TestChatEndpoint:
     @patch("app.api.ai.OllamaClient")
-    def test_chat_accepts_remediation_context(self, MockClient, client, admin_token):
+    def test_chat_accepts_remediation_context(self, MockClient, client, analyst_token):
         instance = MockClient.return_value
         instance.generate.return_value = "Here is my answer about the fix."
 
@@ -240,7 +240,7 @@ class TestChatEndpoint:
                 "question": "How do I verify the fix?",
                 "remediation_context": "## Permanent Fix\n- Disable anonymous FTP",
             },
-            headers={"Authorization": f"Bearer {admin_token}"},
+            headers={"Authorization": f"Bearer {analyst_token}"},
         )
         assert resp.status_code == 200
         # Verify the remediation context was included in the prompt
@@ -249,14 +249,14 @@ class TestChatEndpoint:
         assert "Disable anonymous FTP" in call_args
 
     @patch("app.api.ai.OllamaClient")
-    def test_chat_works_without_remediation_context(self, MockClient, client, admin_token):
+    def test_chat_works_without_remediation_context(self, MockClient, client, analyst_token):
         instance = MockClient.return_value
         instance.generate.return_value = "General answer."
 
         resp = client.post(
             "/ai/chat",
             json={"question": "What is FTP?"},
-            headers={"Authorization": f"Bearer {admin_token}"},
+            headers={"Authorization": f"Bearer {analyst_token}"},
         )
         assert resp.status_code == 200
         assert resp.json()["answer"] == "General answer."

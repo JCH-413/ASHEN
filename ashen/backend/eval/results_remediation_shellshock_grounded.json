@@ -1,0 +1,10 @@
+{
+  "generated": "2026-06-14T22:55:15.020776+00:00",
+  "host": "192.168.28.133",
+  "exploit_type": "shellshock_cgi",
+  "applied_fix": "a2dismod -f cgi cgid; service apache2 restart (grounded)",
+  "vuln_before": true,
+  "vuln_after": false,
+  "service_up_after": true,
+  "outcome": "fixed"
+}

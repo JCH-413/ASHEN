@@ -48,7 +48,7 @@ const AttackRecommendations = () => {
   const prevGeneratingRef = useRef(store.generating);
   useEffect(() => {
     if (prevGeneratingRef.current && !store.generating && store.recommendation && !store.lastError) {
-      toast({ title: "Recommendations Generated", description: "Model: tinyllama" });
+      toast({ title: "Recommendations Generated", description: "Model: llama3.2" });
     }
     prevGeneratingRef.current = store.generating;
   }, [store.generating, store.recommendation, store.lastError, toast]);

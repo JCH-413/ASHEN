@@ -23,6 +23,7 @@ from app.models.user import User
 
 # for adding and listing of authorize targets
 from app.models.target_system import TargetSystem
+from app.models.scan import Scan
 from app.utils.logging_utils import create_audit_log
 
 # for scan request
@@ -131,8 +132,18 @@ def get_user_sessions(user_id: int, db: Session = Depends(get_db)):
 def add_authorized_ip(body: TargetCreate, db: Session = Depends(get_db), admin_payload: dict = Depends(require_admin)):
     admin_email = admin_payload.get("sub")
     admin = db.query(Admin).filter(Admin.email == admin_email).first()
-    if db.query(TargetSystem).filter(TargetSystem.ip_address == body.ip_address).first():
+    existing = db.query(TargetSystem).filter(TargetSystem.ip_address == body.ip_address).first()
+
+    if existing and existing.authorized:
         raise HTTPException(status_code=400, detail="IP already authorized")
+
+    if existing and not existing.authorized:
+        existing.authorized = True
+        existing.added_by = admin.admin_id
+        db.commit()
+        create_audit_log(db, f"Admin {admin.email} re-authorized target {body.ip_address}", admin.email)
+        return {"message": f"IP {body.ip_address} re-authorized successfully"}
+
     target = TargetSystem(ip_address=body.ip_address, added_by=admin.admin_id)
     db.add(target)
     db.commit()
@@ -142,7 +153,7 @@ def add_authorized_ip(body: TargetCreate, db: Session = Depends(get_db), admin_p
 # to list authorizes targers
 @router.get("/targets", dependencies=[Depends(require_admin)])
 def list_authorized_targets(db: Session = Depends(get_db)):
-    targets = db.query(TargetSystem).all()
+    targets = db.query(TargetSystem).filter(TargetSystem.authorized == True).all()
     return [
     	{
     		"target_id": t.target_id, 
@@ -153,6 +164,47 @@ def list_authorized_targets(db: Session = Depends(get_db)):
     	} 
     	for t in targets
     ]
+
+
+@router.delete("/targets/{target_id}")
+def delete_authorized_target(
+    target_id: int,
+    db: Session = Depends(get_db),
+    admin_payload: dict = Depends(require_admin),
+):
+    admin_email = admin_payload.get("sub")
+    admin = db.query(Admin).filter(Admin.email == admin_email).first()
+
+    target = db.query(TargetSystem).filter(TargetSystem.target_id == target_id).first()
+    if not target:
+        raise HTTPException(status_code=404, detail="Target not found")
+
+    # Keep scan history intact: if scans exist, deactivate authorization instead of hard delete.
+    related_scans = db.query(Scan).filter(Scan.target_system_id == target.target_id).count()
+    target_ip = target.ip_address
+
+    if related_scans > 0:
+        target.authorized = False
+        db.commit()
+        create_audit_log(
+            db,
+            f"Admin {admin.email} removed target {target_ip} from authorized list (kept for history)",
+            admin.email,
+        )
+        return {
+            "message": f"IP {target_ip} removed from authorized list",
+            "target_id": target_id,
+            "soft_removed": True,
+        }
+
+    db.delete(target)
+    db.commit()
+    create_audit_log(db, f"Admin {admin.email} deleted target {target_ip}", admin.email)
+    return {
+        "message": f"IP {target_ip} deleted successfully",
+        "target_id": target_id,
+        "soft_removed": False,
+    }
 
 # to review scan request
 @router.get("/scan-requests", dependencies=[Depends(require_admin)])

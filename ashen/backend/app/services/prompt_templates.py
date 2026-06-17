@@ -1,7 +1,13 @@
-def build_attack_prompt(data):
+def build_attack_prompt(data, cve_context=""):
+    cve_block = ""
+    if cve_context:
+        cve_block = f"""\nRelevant CVE context:\n{cve_context}\n"""
+
     return f"""You are an exploit recommender. Given scan results and available exploits, list ONLY the exploits that match open ports. Order by priority: critical/high severity first, then medium, then low.
 
 For each match write one line: priority number, port, exploit name, and why.
+
+{cve_block}
 
 {data}
 

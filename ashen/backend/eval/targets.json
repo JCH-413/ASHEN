@@ -1,0 +1,57 @@
+{
+  "_comment": "Multi-target testbed. Each target carries its own valid_cves (real CVEs applicable to THAT host) so fabrication is scored per-target — e.g. EternalBlue is valid on the Windows box but a fabrication on the Linux one. Global valid_cves is the fallback. expected_vulnerable is only used by --no-exploit dry-runs; live runs use the exploit oracle.",
+  "valid_cves": [],
+  "targets": [
+    {
+      "ip": "192.168.28.130",
+      "name": "metasploitable2",
+      "valid_cves": ["CVE-2011-2523", "CVE-2008-0166", "CVE-2007-2447", "CVE-2011-3192"],
+      "scan_context_lines": [
+        "Port 21 | ftp-vsftpd | Severity: high | vsftpd 2.3.4, weak/default credentials",
+        "Port 22 | ssh-openssh | Severity: high | OpenSSH 4.7p1 Debian, weak/default credentials",
+        "Port 80 | http-apache | Severity: medium | Apache httpd 2.2.8 (Ubuntu) DAV/2, possible CGI",
+        "Port 139 | netbios-ssn | Severity: medium | Samba smbd 3.x",
+        "Port 445 | netbios-ssn | Severity: medium | Samba smbd 3.x (SMB)"
+      ],
+      "findings": [
+        {"port": 21, "exploit_type": "ftp_brute_force", "severity": "high", "description": "vsftpd 2.3.4 accepts weak credentials", "expected_vulnerable": true},
+        {"port": 22, "exploit_type": "ssh_brute_force", "severity": "high", "description": "OpenSSH 4.7p1 accepts weak credentials", "expected_vulnerable": true},
+        {"port": 445, "exploit_type": "ms17_010_check", "severity": "medium", "description": "SMB MS17-010 check (expected negative: Linux Samba, not Windows)", "expected_vulnerable": false},
+        {"port": 80, "exploit_type": "shellshock_cgi", "severity": "medium", "description": "Apache CGI Shellshock check", "expected_vulnerable": false}
+      ]
+    },
+    {
+      "ip": "192.168.28.136",
+      "name": "shellshock-ubuntu1404",
+      "valid_cves": ["CVE-2014-6271", "CVE-2014-7169"],
+      "scan_context_lines": [
+        "Port 22 | ssh | Severity: low | OpenSSH",
+        "Port 80 | http-apache | Severity: critical | Apache 2.4.7 (Ubuntu) mod_cgi, Shellshock-vulnerable bash via /cgi-bin/vulnerable"
+      ],
+      "findings": [
+        {"port": 80, "exploit_type": "shellshock_cgi", "severity": "critical", "description": "Apache mod_cgi + vulnerable bash (CVE-2014-6271) at /cgi-bin/vulnerable", "expected_vulnerable": true},
+        {"port": 22, "exploit_type": "ssh_brute_force", "severity": "low", "description": "OpenSSH (creds not in wordlist)", "expected_vulnerable": false},
+        {"port": 21, "exploit_type": "ftp_brute_force", "severity": "low", "description": "no FTP (expected negative)", "expected_vulnerable": false},
+        {"port": 445, "exploit_type": "ms17_010_check", "severity": "low", "description": "no SMB (expected negative)", "expected_vulnerable": false}
+      ]
+    },
+    {
+      "ip": "192.168.28.132",
+      "name": "metasploitable3-win2k8",
+      "valid_cves": ["CVE-2017-0143", "CVE-2017-0144", "CVE-2017-0145"],
+      "scan_context_lines": [
+        "Port 21 | ftp | Severity: medium | Microsoft ftpd",
+        "Port 22 | ssh-openssh | Severity: medium | OpenSSH 7.1",
+        "Port 80 | http-iis | Severity: medium | Microsoft IIS httpd 7.5",
+        "Port 139 | netbios-ssn | Severity: high | Windows netbios-ssn",
+        "Port 445 | microsoft-ds | Severity: critical | Windows Server 2008 R2 SMBv1, MS17-010 candidate"
+      ],
+      "findings": [
+        {"port": 445, "exploit_type": "ms17_010_check", "severity": "critical", "description": "Windows Server 2008 R2 SMBv1 MS17-010 (EternalBlue)", "expected_vulnerable": true},
+        {"port": 21, "exploit_type": "ftp_brute_force", "severity": "medium", "description": "Microsoft ftpd (creds not in wordlist)", "expected_vulnerable": false},
+        {"port": 22, "exploit_type": "ssh_brute_force", "severity": "medium", "description": "OpenSSH 7.1 (creds not in wordlist)", "expected_vulnerable": false},
+        {"port": 80, "exploit_type": "shellshock_cgi", "severity": "medium", "description": "IIS 7.5 (no CGI/bash; expected negative)", "expected_vulnerable": false}
+      ]
+    }
+  ]
+}

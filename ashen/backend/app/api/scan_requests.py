@@ -58,3 +58,35 @@ def request_scan(
         "message": f"Scan authorization request for {body.ip_address} submitted",
         "status": new_request.status.value
     }
+
+
+@router.get("/my-requests")
+def my_requests(
+    db: Session = Depends(get_db),
+    current_payload: dict = Depends(get_current_user)
+):
+    """An analyst's own target-authorization requests + their status.
+
+    Read-only; used by the notifications bell to surface 'IP authorized'.
+    """
+    email = current_payload.get("sub")
+    user = db.query(User).filter(User.email == email).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    rows = (
+        db.query(ScanRequest)
+        .filter(ScanRequest.requested_by == user.user_id)
+        .order_by(ScanRequest.created_at.desc())
+        .all()
+    )
+    return [
+        {
+            "request_id": r.request_id,
+            "target_ip": r.target_ip,
+            "status": r.status.value,
+            "created_at": r.created_at,
+            "reviewed_at": r.reviewed_at,
+        }
+        for r in rows
+    ]

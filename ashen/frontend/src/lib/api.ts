@@ -72,10 +72,24 @@ export interface ScanHistoryItem {
   end_time: string | null;
 }
 
+export interface MyScanRequest {
+  request_id: number;
+  target_ip: string;
+  status: string;
+  created_at: string;
+  reviewed_at: string | null;
+}
+
+export interface AuthorizedTarget {
+  target_id: number;
+  ip_address: string;
+}
+
 export interface ScanStatus {
   scan_id: number;
   status: string;
   progress: number;
+  target_ip: string | null;
   start_time: string | null;
   end_time: string | null;
   results_json: string | null;
@@ -114,8 +128,10 @@ export interface ExploitResult {
 
 export interface ExploitListItem {
   exploit_id: number;
+  vuln_id: number | null;
   target_ip: string;
   exploit_type: string;
+  port: number | null;
   tool_used: string;
   status: string;
   vulnerable: boolean | null;
@@ -239,9 +255,24 @@ export const scans = {
     });
   },
 
+  myRequests() {
+    return request<MyScanRequest[]>("/scan/my-requests");
+  },
+
+  authorizedTargets() {
+    return request<AuthorizedTarget[]>("/scan/authorized-targets");
+  },
+
   cancel(scanId: number) {
     return request<{ scan_id: number; status: string; message: string }>(
       `/scan/cancel/${scanId}`,
+      { method: "POST" }
+    );
+  },
+
+  reExtract(scanId: number) {
+    return request<{ scan_id: number; status: string; vulnerabilities: number; message: string }>(
+      `/scan/${scanId}/re-extract`,
       { method: "POST" }
     );
   },
@@ -303,12 +334,19 @@ export const exploits = {
     return request<ExploitResult>(`/exploit/results/${exploitId}`);
   },
 
+  cancel(exploitId: number) {
+    return request<{ exploit_id: number; status: string; message: string }>(
+      `/exploit/cancel/${exploitId}`,
+      { method: "POST" }
+    );
+  },
+
   all() {
     return request<ExploitListItem[]>("/exploit/all");
   },
 
   types() {
-    return request<{ exploit_types: { key: string; tool: string }[] }>("/exploit/types");
+    return request<{ exploit_types: { key: string; tool: string; port: number; service: string }[] }>("/exploit/types");
   },
 };
 
@@ -354,6 +392,13 @@ export const admin = {
     });
   },
 
+  deleteTarget(targetId: number) {
+    return request<{ message: string; target_id: number; soft_removed: boolean }>(
+      `/admin/targets/${targetId}`,
+      { method: "DELETE" }
+    );
+  },
+
   scanRequests() {
     return request<ScanRequestItem[]>("/admin/scan-requests");
   },
@@ -376,6 +421,7 @@ async function streamSSE(
   path: string,
   body: Record<string, unknown>,
   onToken: (token: string) => void,
+  onMeta?: (model: string) => void,
 ): Promise<string> {
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
@@ -432,7 +478,17 @@ async function streamSSE(
             throw new ApiError(503, raw);
           }
         }
-        if (currentEvent === "done") break;
+        if (currentEvent === "done") {
+          if (onMeta) {
+            try {
+              const model = JSON.parse(raw) as string;
+              if (model) onMeta(model);
+            } catch {
+              // no model in done event
+            }
+          }
+          break;
+        }
         try {
           const token = JSON.parse(raw) as string;
           full += token;
@@ -513,15 +569,17 @@ export const ai = {
   recommendAttacksStream(
     params: { scan_id: number; vuln_id?: number },
     onToken: (token: string) => void,
+    onMeta?: (model: string) => void,
   ) {
-    return streamSSE("/ai/recommend-attacks/stream", params, onToken);
+    return streamSSE("/ai/recommend-attacks/stream", params, onToken, onMeta);
   },
 
   remediateStream(
     params: { vuln_id?: number; exploit_id?: number; description?: string },
     onToken: (token: string) => void,
+    onMeta?: (model: string) => void,
   ) {
-    return streamSSE("/ai/remediate/stream", params, onToken);
+    return streamSSE("/ai/remediate/stream", params, onToken, onMeta);
   },
 
   chatStream(

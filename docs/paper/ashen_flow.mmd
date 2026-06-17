@@ -1,0 +1,46 @@
+%% ASHEN end-to-end flow. View at https://mermaid.live (paste this), then
+%% rebuild in Visio using the swimlanes below. Swimlanes: Admin | Analyst |
+%% System (scan/exploit/report) | AI pipeline (RAG + LLM, local) | Governance.
+flowchart TD
+    %% ---- Auth ----
+    A0([Analyst sign-up]) --> A1[Login / Auth]
+    AD0([Admin login]) --> AD1{Admin governance}
+
+    %% ---- Scope authorization (Admin) ----
+    A1 --> R1[Analyst submits Target Request]
+    R1 --> AD1
+    AD1 -->|whitelist IP / approve request| T1[(Target in scope)]
+    AD1 -->|create Analyst accounts| A0
+
+    %% ---- Assessment workflow (Analyst + System) ----
+    T1 --> S1[Scan: nmap -sV --script vuln]
+    S1 --> V1[Vulnerability detected<br/>unvalidated NSE finding]
+    V1 --> X1[Exploit Run<br/>ssh/ftp brute, ms17_010, shellshock]
+    X1 --> O1{Oracle verdict<br/>vulnerable?}
+
+    %% ---- AI pipeline: recommendation ----
+    V1 --> RAG1[Retrieve CVE context<br/>ChromaDB + sentence-transformers]
+    RAG1 --> G1[Action-aware grounding:<br/>map CVEs to exploit types]
+    G1 --> REC[Attack Recommendation<br/>local LLM, safety-filtered]
+    REC --> X1
+
+    %% ---- AI pipeline: remediation + re-validation (closed loop) ----
+    O1 -->|yes| REM1[Retrieve fix refs] --> REM2[Remediation guidance<br/>local LLM, 5-part]
+    REM2 --> APPLY[Operator applies fix]
+    APPLY --> X2[Re-run same exploit]
+    X2 --> O2{Re-validate:<br/>still vulnerable?}
+    O2 -->|no, service up| FIXED([fixed])
+    O2 -->|yes| NOTFIX([not_fixed -> regenerate fix])
+    NOTFIX -.feedback.-> REM2
+
+    %% ---- Reporting ----
+    O1 --> REP[Report: HTML / CSV]
+    FIXED --> REP
+
+    %% ---- Governance (cross-cutting) ----
+    S1 -.-> LOG1[(Audit Log)]
+    X1 -.-> LOG1
+    REC -.-> LOG2[(AI Governance Log)]
+    REM2 -.-> LOG2
+    REP -.-> LOG1
+    AD1 -.-> LOG1

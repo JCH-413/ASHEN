@@ -1,7 +1,28 @@
+import re
+
+
 BANNED_KEYWORDS = [
     "rm -rf", "delete system", "shutdown",
     "format disk", "malware", "ddos"
 ]
+
+
+def _strip_rag_context(response: str) -> str:
+    """Remove common RAG/CVE context lines if the model echoes them."""
+    cleaned = response
+    patterns = [
+        r"^\s*Relevant CVE context:\s*$",
+        r"^\s*-\s*(CRITICAL|HIGH|MEDIUM|LOW)\s*:\s*.*$",
+        r"^\s*Related CVEs\s*:.*$",
+        r"^\s*Known vulnerabilities.*$",
+        r"^\s*Vulnerabilities found\s*:.*$",
+        r"^\s*Reference vulnerabilities\s*:.*$",
+        r"^\s*.*\bCVE-\d{4}-\d+\b.*$",
+    ]
+    for pattern in patterns:
+        cleaned = re.sub(pattern, "", cleaned, flags=re.IGNORECASE | re.MULTILINE)
+    cleaned = re.sub(r"\n{3,}", "\n\n", cleaned)
+    return cleaned.strip()
 
 
 def _check_safety(response):
@@ -70,6 +91,8 @@ def filter_response(response):
 def filter_attack_response(response):
     """Filter for attack recommendation responses — preserves structured plan,
     only blocks unsafe material and removes links."""
+    response = _strip_rag_context(response) if response else response
+
     blocked = _check_safety(response)
     if blocked:
         return blocked

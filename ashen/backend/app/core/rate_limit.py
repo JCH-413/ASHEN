@@ -19,6 +19,12 @@ SCAN_RATE_WINDOW = 60  # seconds
 EXPLOIT_RATE_LIMIT = 10
 EXPLOIT_RATE_WINDOW = 60
 
+AI_RATE_LIMIT = 30
+AI_RATE_WINDOW = 60
+
+REPORT_RATE_LIMIT = 20
+REPORT_RATE_WINDOW = 60
+
 REDIS_URL = os.getenv("REDIS_URL", "")
 
 # ── Backend selection ────────────────────────────────────────────────
@@ -101,6 +107,14 @@ def check_scan_rate(user_email: str):
 
 def check_exploit_rate(user_email: str):
     _check_rate(f"ashen:rate:exploit:{user_email}", EXPLOIT_RATE_LIMIT, EXPLOIT_RATE_WINDOW)
+
+
+def check_ai_rate(user_email: str):
+    _check_rate(f"ashen:rate:ai:{user_email}", AI_RATE_LIMIT, AI_RATE_WINDOW)
+
+
+def check_report_rate(user_email: str):
+    _check_rate(f"ashen:rate:report:{user_email}", REPORT_RATE_LIMIT, REPORT_RATE_WINDOW)
 
 
 def reset_rate_limits():
