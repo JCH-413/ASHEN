@@ -46,3 +46,16 @@ app.include_router(reports.router,                         tags=["Reports"])
 @app.get("/")
 def root():
     return {"message": "ASHEN backend running..."}
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # On startup: runs before accepting any requests
+    db = next(get_db())
+    stuck_scans = db.query(Scan).filter(Scan.status == "running").all()
+    for scan in stuck_scans:
+        scan.status = "failed"
+        scan.completed_at = datetime.utcnow()
+    db.commit()
+    db.close()
+    yield
+    # On shutdown: runs after last request
